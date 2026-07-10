@@ -63,7 +63,7 @@ export default function App() {
             </div>
           )}
           <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold', color: config?.colorPrincipal || '#34495e' }}>Para separar tu cuenta luego, dinos tu nombre:</label>
-          <input type="text" value={inputNombreTemp} onChange={e => setInputNombreTemp(e.target.value)} placeholder="Tu nombre o apodo (Ej. Aldo)" style={{ width: '100%', padding: '12px', marginBottom: '20px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc', fontSize: '16px', textAlign: 'center' }} />
+          <input type="text" value={inputNombreTemp} onChange={e => setInputNombreTemp(e.target.value)} placeholder="Tu nombre o apodo" style={{ width: '100%', padding: '12px', marginBottom: '20px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc', fontSize: '16px', textAlign: 'center' }} />
           <button onClick={() => { if (inputNombreTemp.trim() && mesaAsignada) setNombreComensal(inputNombreTemp.trim()); else alert("Completá tu nombre y mesa."); }} style={{ width: '100%', padding: '15px', background: config?.colorSecundario || '#e67e22', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>Ver el Menú</button>
           
           <button onClick={() => setVistaActual('admin')} style={{ background: 'none', border: 'none', color: '#95a5a6', marginTop: '20px', textDecoration: 'underline', cursor: 'pointer' }}>Ingreso Staff / Cocina</button>
