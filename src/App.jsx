@@ -3,6 +3,21 @@ import { db, auth } from './firebase';
 import { collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, getDocs, limit } from 'firebase/firestore';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 
+// ==========================================
+// MOTOR MULTI-TENANT (RUTEADOR DE INQUILINOS)
+// ==========================================
+const getTenantId = () => {
+  const hostname = window.location.hostname;
+  // Fallback: Si estamos probando en local o en el dominio genérico de Vercel, usamos "demo"
+  if (hostname === 'localhost' || hostname.includes('vercel.app')) {
+    return 'demo';
+  }
+  // Si es un dominio real (ej: resto1.midominio.com), extrae "resto1"
+  return hostname.split('.')[0];
+};
+
+const tenantId = getTenantId();
+
 export default function App() {
   const [vistaActual, setVistaActual] = useState('cliente'); 
   const [productos, setProductos] = useState([]);
@@ -30,7 +45,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const unsubscribeProd = onSnapshot(collection(db, "productos"), (snapshot) => {
+    // Lectura aislada por inquilino
+    const unsubscribeProd = onSnapshot(collection(db, `restaurantes/${tenantId}/productos`), (snapshot) => {
       const docs = [];
       snapshot.forEach((doc) => docs.push({ ...doc.data(), id: doc.id }));
       setProductos(docs);
@@ -39,7 +55,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const unsubscribeConfig = onSnapshot(doc(db, "configuracion", "restaurante"), (docSnap) => {
+    // Lectura de configuración aislada
+    const unsubscribeConfig = onSnapshot(doc(db, `restaurantes/${tenantId}/configuracion`, "datos"), (docSnap) => {
       if (docSnap.exists()) setConfig(docSnap.data());
     });
     return () => unsubscribeConfig();
@@ -63,7 +80,7 @@ export default function App() {
             </div>
           )}
           <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold', color: config?.colorPrincipal || '#34495e' }}>Para separar tu cuenta luego, dinos tu nombre:</label>
-          <input type="text" value={inputNombreTemp} onChange={e => setInputNombreTemp(e.target.value)} placeholder="Tu nombre o apodo" style={{ width: '100%', padding: '12px', marginBottom: '20px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc', fontSize: '16px', textAlign: 'center' }} />
+          <input type="text" value={inputNombreTemp} onChange={e => setInputNombreTemp(e.target.value)} placeholder="Tu nombre o apodo (Ej. Aldo)" style={{ width: '100%', padding: '12px', marginBottom: '20px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc', fontSize: '16px', textAlign: 'center' }} />
           <button onClick={() => { if (inputNombreTemp.trim() && mesaAsignada) setNombreComensal(inputNombreTemp.trim()); else alert("Completá tu nombre y mesa."); }} style={{ width: '100%', padding: '15px', background: config?.colorSecundario || '#e67e22', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>Ver el Menú</button>
           
           <button onClick={() => setVistaActual('admin')} style={{ background: 'none', border: 'none', color: '#95a5a6', marginTop: '20px', textDecoration: 'underline', cursor: 'pointer' }}>Ingreso Staff / Cocina</button>
@@ -133,7 +150,7 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
 
   useEffect(() => {
     if (!mesaFija) return;
-    const q = query(collection(db, "pedidos"));
+    const q = query(collection(db, `restaurantes/${tenantId}/pedidos`));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const consumos = [];
       let alerta = null;
@@ -214,7 +231,7 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
     };
 
     try {
-      await addDoc(collection(db, "pedidos"), nuevaComanda);
+      await addDoc(collection(db, `restaurantes/${tenantId}/pedidos`), nuevaComanda);
       alert("¡Pedido en preparación!");
       setCarrito([]);
       setTabMovil('cuenta'); 
@@ -254,7 +271,7 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
 
     if (window.confirm(`¿Llamar al mozo para pagar?`)) {
       try {
-        await addDoc(collection(db, "pedidos"), {
+        await addDoc(collection(db, `restaurantes/${tenantId}/pedidos`), {
           tipo: 'alerta_caja',
           mesa: mesaFija,
           solicitante: comensal,
@@ -591,15 +608,16 @@ function VistaAdmin({ inventario, restauranteConfig }) {
   const [inputRuc, setInputRuc] = useState(restauranteConfig?.ruc || '');
   const [inputTelefono, setInputTelefono] = useState(restauranteConfig?.telefono || '');
 
+  // CONTROL DE SESIÓN Y OBTENCIÓN DE PERMISOS
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        const userDocRef = doc(db, "usuarios", currentUser.email); 
+        const userDocRef = doc(db, `restaurantes/${tenantId}/usuarios`, currentUser.email); 
         const userSnap = await getDoc(userDocRef);
         
         if (!userSnap.exists()) {
-          const allUsers = await getDocs(collection(db, "usuarios"));
+          const allUsers = await getDocs(collection(db, `restaurantes/${tenantId}/usuarios`));
           const esPrimerUsuario = allUsers.empty;
           
           const nuevosPermisos = {
@@ -626,7 +644,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
   useEffect(() => {
     if (!user || !permisos) return;
     
-    const unsubLogs = onSnapshot(query(collection(db, "logs_abm"), orderBy("fecha", "desc"), limit(30)), (snap) => {
+    const unsubLogs = onSnapshot(query(collection(db, `restaurantes/${tenantId}/logs_abm`), orderBy("fecha", "desc"), limit(30)), (snap) => {
       const logs = [];
       snap.forEach(d => logs.push({ ...d.data(), id: d.id }));
       setLogsABM(logs);
@@ -634,7 +652,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
 
     let unsubUsers = () => {};
     if (permisos?.admin) {
-      unsubUsers = onSnapshot(collection(db, "usuarios"), (snap) => {
+      unsubUsers = onSnapshot(collection(db, `restaurantes/${tenantId}/usuarios`), (snap) => {
         const u = [];
         snap.forEach(d => u.push({ ...d.data(), id: d.id })); 
         setUsuariosStaff(u);
@@ -691,7 +709,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
 
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, "pedidos"), orderBy("fecha", "desc"));
+    const q = query(collection(db, `restaurantes/${tenantId}/pedidos`), orderBy("fecha", "desc"));
     const unsubscribePedidos = onSnapshot(q, (snapshot) => {
       const cocinas = [];
       const alertas = [];
@@ -757,7 +775,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
     const emailClean = nuevoEmailStaff.trim().toLowerCase();
     if (!emailClean) return;
 
-    const docRef = doc(db, "usuarios", emailClean);
+    const docRef = doc(db, `restaurantes/${tenantId}/usuarios`, emailClean);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       alert("Este usuario ya se encuentra registrado o tiene una solicitud pendiente.");
@@ -775,7 +793,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
     const strRoles = Object.keys(permisosSolicitados).filter(k => permisosSolicitados[k]).join(", ");
     const nombreLocal = restauranteConfig?.nombre || "Sucursal Desconocida";
 
-    await addDoc(collection(db, "tickets_usuarios"), {
+    await addDoc(collection(db, `restaurantes/${tenantId}/tickets_usuarios`), {
       tipo: "ALTA",
       email: emailClean,
       empresa: nombreLocal,
@@ -804,7 +822,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
     if (window.confirm(`¿Solicitar remoción definitiva de ${u.email}?`)) {
       const nombreLocal = restauranteConfig?.nombre || "Sucursal Desconocida";
 
-      await addDoc(collection(db, "tickets_usuarios"), {
+      await addDoc(collection(db, `restaurantes/${tenantId}/tickets_usuarios`), {
         tipo: "BAJA",
         email: u.email,
         empresa: nombreLocal,
@@ -812,7 +830,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
         fecha: new Date().toISOString()
       });
 
-      await updateDoc(doc(db, "usuarios", u.id), {
+      await updateDoc(doc(db, `restaurantes/${tenantId}/usuarios`, u.id), {
         estado_aprobacion: "pendiente_baja"
       });
 
@@ -824,7 +842,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
 
   const registrarLogABM = async (accion, detalle) => {
     if (!user) return;
-    await addDoc(collection(db, "logs_abm"), { accion, detalle, usuario: user?.email || 'Anonimo', fecha: new Date().toISOString() });
+    await addDoc(collection(db, `restaurantes/${tenantId}/logs_abm`), { accion, detalle, usuario: user?.email || 'Anonimo', fecha: new Date().toISOString() });
   };
 
   const avanzarEstadoItem = async (pedidoId, id_item, nuevoEstado) => {
@@ -836,7 +854,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
     });
     const todosEntregados = nuevosItems.every(i => i.estado_item === 'entregado' || i.estado_item === 'pagado');
     const estadoDocFinal = todosEntregados ? 'entregado' : pedido.estado;
-    await updateDoc(doc(db, "pedidos", pedidoId), { items: nuevosItems, estado: estadoDocFinal });
+    await updateDoc(doc(db, `restaurantes/${tenantId}/pedidos`, pedidoId), { items: nuevosItems, estado: estadoDocFinal });
   };
 
   const avanzarBloqueMesa = async (mesaId, estadoActual, estadoNuevo) => {
@@ -850,7 +868,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
         });
         if (modificado) {
             const todosEntregados = nuevosItems.every(i => i.estado_item === 'entregado' || i.estado_item === 'pagado');
-            await updateDoc(doc(db, "pedidos", ped.id), { items: nuevosItems, estado: todosEntregados ? 'entregado' : ped.estado });
+            await updateDoc(doc(db, `restaurantes/${tenantId}/pedidos`, ped.id), { items: nuevosItems, estado: todosEntregados ? 'entregado' : ped.estado });
         }
     }
   };
@@ -859,16 +877,16 @@ function VistaAdmin({ inventario, restauranteConfig }) {
     if (alerta && alerta.tipo_division === 'separadas') {
       if (window.confirm(`¿Confirmar cobro individual de Gs. ${alerta.total_final.toLocaleString()} a ${alerta.solicitante}? (El resto de la mesa seguirá activa)`)) {
         const comandasPersona = comandasCocina.filter(c => c.mesa === mesaId && c.estado !== 'pagado' && c.comensal === alerta.solicitante);
-        for (const comanda of comandasPersona) await updateDoc(doc(db, "pedidos", comanda.id), { estado: 'pagado' });
-        await updateDoc(doc(db, "pedidos", alerta.id), { estado: 'pagado' });
+        for (const comanda of comandasPersona) await updateDoc(doc(db, `restaurantes/${tenantId}/pedidos`, comanda.id), { estado: 'pagado' });
+        await updateDoc(doc(db, `restaurantes/${tenantId}/pedidos`, alerta.id), { estado: 'pagado' });
         alert(`Cuenta de ${alerta.solicitante} pagada y liberada.`);
       }
     } else {
       if (window.confirm(`¿Confirmar cobro TOTAL de la Mesa ${mesaId}?`)) {
         const comandasAsociadas = comandasCocina.filter(c => c.mesa === mesaId && c.estado !== 'pagado');
-        for (const comanda of comandasAsociadas) await updateDoc(doc(db, "pedidos", comanda.id), { estado: 'pagado' });
+        for (const comanda of comandasAsociadas) await updateDoc(doc(db, `restaurantes/${tenantId}/pedidos`, comanda.id), { estado: 'pagado' });
         const alertasAsociadas = alertasCaja.filter(a => a.mesa === mesaId && a.estado === 'pendiente_cobro');
-        for (const al of alertasAsociadas) await updateDoc(doc(db, "pedidos", al.id), { estado: 'pagado' });
+        for (const al of alertasAsociadas) await updateDoc(doc(db, `restaurantes/${tenantId}/pedidos`, al.id), { estado: 'pagado' });
         alert(`Mesa ${mesaId} facturada y liberada completamente.`);
       }
     }
@@ -900,11 +918,11 @@ function VistaAdmin({ inventario, restauranteConfig }) {
     };
 
     if (idEditando) {
-      await updateDoc(doc(db, "productos", idEditando), payload);
+      await updateDoc(doc(db, `restaurantes/${tenantId}/productos`, idEditando), payload);
       registrarLogABM("MODIFICACIÓN", `Plato: ${payload.nombre}`);
       alert("Plato Actualizado exitosamente.");
     } else {
-      await addDoc(collection(db, "productos"), { ...payload, estado: "activo" });
+      await addDoc(collection(db, `restaurantes/${tenantId}/productos`), { ...payload, estado: "activo" });
       registrarLogABM("ALTA", `Nuevo Plato: ${payload.nombre}`);
       alert("Nuevo plato guardado.");
     }
@@ -918,7 +936,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
       if (!Array.isArray(arrayProductos)) throw new Error("No es un array");
       
       for (let item of arrayProductos) {
-        await addDoc(collection(db, "productos"), {
+        await addDoc(collection(db, `restaurantes/${tenantId}/productos`), {
           nombre: item.nombre || 'Sin Nombre', precio_base: parseInt(item.precio_base) || 0,
           precio_promo: item.precio_promo ? parseInt(item.precio_promo) : null,
           categoria: item.categoria || 'General', imagenUrl: item.imagenUrl || '', estado: 'activo',
@@ -936,7 +954,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
 
   const guardarVariablesRestaurante = async (e) => {
     e.preventDefault();
-    await setDoc(doc(db, "configuracion", "restaurante"), { 
+    await setDoc(doc(db, `restaurantes/${tenantId}/configuracion`, "datos"), { 
       nombre: inputNombreRest, logoUrl: inputLogoUrl, colorPrincipal: inputColorPrincipal, colorSecundario: inputColorSecundario,
       direccion: inputDireccion, banco: inputBanco, cuenta: inputCuenta, titular: inputTitular, ruc: inputRuc, telefono: inputTelefono 
     });
@@ -945,17 +963,18 @@ function VistaAdmin({ inventario, restauranteConfig }) {
 
   const cambiarEstadoVisibilidadProducto = async (prod) => {
     const nuevoEstado = prod.estado === "activo" ? "inactivo" : "activo";
-    await updateDoc(doc(db, "productos", prod.id), { estado: nuevoEstado });
+    await updateDoc(doc(db, `restaurantes/${tenantId}/productos`, prod.id), { estado: nuevoEstado });
     registrarLogABM(nuevoEstado === "activo" ? "RE-ACTIVACIÓN" : "PAUSADO", `Plato: ${prod.nombre}`);
   };
 
   const borrarProductoDefinitivo = async (prod) => {
     if (window.confirm(`¿Eliminar permanentemente ${prod.nombre}?`)) {
-      await deleteDoc(doc(db, "productos", prod.id));
+      await deleteDoc(doc(db, `restaurantes/${tenantId}/productos`, prod.id));
       registrarLogABM("ELIMINACIÓN (BORRADO)", `Plato eliminado: ${prod.nombre}`);
     }
   };
 
+  // RENDER PANTALLA LOGIN
   if (!user) {
     return (
       <div style={{ maxWidth: '400px', margin: '100px auto', background: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
@@ -970,10 +989,12 @@ function VistaAdmin({ inventario, restauranteConfig }) {
     );
   }
 
+  // RENDER PANTALLA DE CARGA DE PERMISOS
   if (!permisos) {
     return <div style={{ textAlign: 'center', padding: '50px', fontSize: '20px', color: '#7f8c8d' }}>Validando credenciales y roles de seguridad...</div>;
   }
 
+  // PRE-PROCESAMIENTO: CAJA (AGRUPACIÓN INDIVIDUAL)
   const mesasEnCaja = comandasCocina.filter(c => c.estado !== 'pagado').reduce((acc, curr) => {
     if (!acc[curr.mesa]) acc[curr.mesa] = { total: 0, comensales: {}, alertas: [] };
     acc[curr.mesa].total += (curr.total || 0);
@@ -999,6 +1020,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
     });
   }
 
+  // PRE-PROCESAMIENTO: DASHBOARD REPORTES TOP 5
   const ISO_START = fechaInicioRep + 'T00:00:00.000Z';
   const ISO_END = fechaFinRep + 'T23:59:59.999Z';
   const statsProductos = {};
@@ -1034,6 +1056,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
   const rankingToppings = Object.entries(statsToppings).map(([nombre, cant]) => ({nombre, cant})).sort((a,b) => b.cant - a.cant).slice(0,5);
   const rankingCombos = Object.entries(statsCombinaciones).map(([nombre, cant]) => ({nombre, cant})).sort((a,b) => b.cant - a.cant).slice(0,5);
 
+  // PRE-PROCESAMIENTO: COCINA (ITEMS INDIVIDUALES)
   const comandasFiltradas = comandasCocina.filter(p => {
     if (filtroEstado === 'todos') return true;
     if (filtroEstado === 'activos') return p.estado !== 'entregado' && p.estado !== 'pagado';
@@ -1056,8 +1079,9 @@ function VistaAdmin({ inventario, restauranteConfig }) {
 
   return (
     <div style={{ padding: '20px' }}>
+      
+      {/* NAVEGACIÓN SUPERIOR DEL STAFF */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', background: 'white', padding: '15px', borderRadius: '6px' }}>
-        
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           {permisos?.cocina && <button onClick={() => setSubModulo('cocina')} style={{ padding: '12px 18px', background: subModulo === 'cocina' ? '#e74c3c' : '#bdc3c7', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>🔥 COCINA</button>}
           {permisos?.caja && <button onClick={() => setSubModulo('caja')} style={{ padding: '12px 18px', background: subModulo === 'caja' ? '#27ae60' : '#bdc3c7', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>💰 CAJA ({Object.keys(mesasEnCaja).length})</button>}
@@ -1073,6 +1097,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
         </div>
       </div>
 
+      {/* RENDERIZADO: STAFF Y PERMISOS */}
       {subModulo === 'staff' && permisos?.admin && (
         <div style={{ background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
           <h2 style={{ marginTop: 0, color: '#2c3e50', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>Gestión de Personal vía Tickets</h2>
@@ -1122,16 +1147,16 @@ function VistaAdmin({ inventario, restauranteConfig }) {
                         <strong style={{ display: 'block', color: '#34495e' }}>{u.email}</strong>
                         {u.admin && <span style={{ fontSize: '10px', color: '#8e44ad', fontWeight: 'bold' }}>👑 Propietario</span>}
                       </td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}><input type="checkbox" checked={u.cocina || false} onChange={e => updateDoc(doc(db, "usuarios", u.id), { cocina: e.target.checked })} disabled={!esActivo || u.admin} /></td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}><input type="checkbox" checked={u.caja || false} onChange={e => updateDoc(doc(db, "usuarios", u.id), { caja: e.target.checked })} disabled={!esActivo || u.admin} /></td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}><input type="checkbox" checked={u.abm || false} onChange={e => updateDoc(doc(db, "usuarios", u.id), { abm: e.target.checked })} disabled={!esActivo || u.admin} /></td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}><input type="checkbox" checked={u.reportes || false} onChange={e => updateDoc(doc(db, "usuarios", u.id), { reportes: e.target.checked })} disabled={!esActivo || u.admin} /></td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}><input type="checkbox" checked={u.sistema || false} onChange={e => updateDoc(doc(db, "usuarios", u.id), { sistema: e.target.checked })} disabled={!esActivo || u.admin} /></td>
+                      <td style={{ padding: '12px', textAlign: 'center' }}><input type="checkbox" checked={u.cocina || false} onChange={e => updateDoc(doc(db, `restaurantes/${tenantId}/usuarios`, u.id), { cocina: e.target.checked })} disabled={!esActivo || u.admin} /></td>
+                      <td style={{ padding: '12px', textAlign: 'center' }}><input type="checkbox" checked={u.caja || false} onChange={e => updateDoc(doc(db, `restaurantes/${tenantId}/usuarios`, u.id), { caja: e.target.checked })} disabled={!esActivo || u.admin} /></td>
+                      <td style={{ padding: '12px', textAlign: 'center' }}><input type="checkbox" checked={u.abm || false} onChange={e => updateDoc(doc(db, `restaurantes/${tenantId}/usuarios`, u.id), { abm: e.target.checked })} disabled={!esActivo || u.admin} /></td>
+                      <td style={{ padding: '12px', textAlign: 'center' }}><input type="checkbox" checked={u.reportes || false} onChange={e => updateDoc(doc(db, `restaurantes/${tenantId}/usuarios`, u.id), { reportes: e.target.checked })} disabled={!esActivo || u.admin} /></td>
+                      <td style={{ padding: '12px', textAlign: 'center' }}><input type="checkbox" checked={u.sistema || false} onChange={e => updateDoc(doc(db, `restaurantes/${tenantId}/usuarios`, u.id), { sistema: e.target.checked })} disabled={!esActivo || u.admin} /></td>
                       <td style={{ padding: '12px', textAlign: 'center' }}>
                         <input type="checkbox" checked={u.admin || false} onChange={e => {
                           if(window.confirm(e.target.checked ? "¿Dar poder total de Administrador Maestro a este usuario?" : "¿Quitar privilegios de Administrador Maestro?")) {
-                             if(e.target.checked) updateDoc(doc(db, "usuarios", u.id), { admin: true, cocina: true, caja: true, abm: true, reportes: true, sistema: true });
-                             else updateDoc(doc(db, "usuarios", u.id), { admin: false });
+                             if(e.target.checked) updateDoc(doc(db, `restaurantes/${tenantId}/usuarios`, u.id), { admin: true, cocina: true, caja: true, abm: true, reportes: true, sistema: true });
+                             else updateDoc(doc(db, `restaurantes/${tenantId}/usuarios`, u.id), { admin: false });
                           }
                         }} style={{ transform: 'scale(1.5)' }} disabled={u.email === user?.email || !esActivo} />
                       </td>
@@ -1151,6 +1176,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
         </div>
       )}
 
+      {/* RENDERIZADO: COCINA CON BOTONES INDIVIDUALES RESTAURADOS */}
       {subModulo === 'cocina' && permisos?.cocina && (
         <div>
           <div style={{ background: 'white', padding: '12px 15px', borderRadius: '6px', marginBottom: '20px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
@@ -1207,8 +1233,8 @@ function VistaAdmin({ inventario, restauranteConfig }) {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
-                    {mesa.itemsNuevos.length > 0 && <button onClick={() => avanzarBloqueMesa(mesaId, 'nuevo', 'cocina')} style={{ width: '100%', background: '#f39c12', color: 'white', border: 'none', padding: '12px', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>Marchar todos los Nuevos</button>}
-                    {mesa.itemsCocina.length > 0 && <button onClick={() => avanzarBloqueMesa(mesaId, 'cocina', 'completado')} style={{ width: '100%', background: '#2ecc71', color: 'white', border: 'none', padding: '12px', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>Platos en fuego Listos</button>}
+                    {mesa.itemsNuevos.length > 0 && <button onClick={() => avanzarBloqueMesa(mesaId, 'nuevo', 'cocina')} style={{ width: '100%', background: '#f39c12', color: 'white', border: 'none', padding: '12px', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>Marchar todos los Nuevos (Toda la mesa)</button>}
+                    {mesa.itemsCocina.length > 0 && <button onClick={() => avanzarBloqueMesa(mesaId, 'cocina', 'completado')} style={{ width: '100%', background: '#2ecc71', color: 'white', border: 'none', padding: '12px', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>Platos en fuego Listos (Toda la mesa)</button>}
                   </div>
                 </div>
               );
@@ -1217,6 +1243,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
         </div>
       )}
 
+      {/* RENDERIZADO: CAJA DESGLOSADA POR COMENSAL */}
       {subModulo === 'caja' && permisos?.caja && (
         <div>
           <h2>💰 Monitor de Caja y Cuentas Activas</h2>
@@ -1251,7 +1278,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
                     <strong style={{ display: 'block', marginBottom: '10px', color: '#7f8c8d', borderBottom: '1px solid #f1f2f6', paddingBottom: '4px' }}>Detalle de Consumos por Usuario:</strong>
                     
                     {Object.keys(infoMesa.comensales).map(persona => (
-                      <div key={persona} style={{ display: 'flex', flexDirection: 'column', marginBottom: '10px', background: '#f8f9fa', padding: '10px', borderRadius: '6px', borderLeft: '4px solid #3498db' }}>
+                      <div key={persona} style={{ display: 'flex', flexDirection: 'column', marginBottom: '10px', background: '#f8f9fa', padding: '10px', borderRadius: '6px', borderLeft: `4px solid ${restauranteConfig?.colorSecundario || '#3498db'}` }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                           <span style={{ fontWeight: 'bold', color: '#2980b9' }}>👤 {persona}</span>
                           <strong style={{ color: '#2c3e50' }}>Gs. {(infoMesa.comensales[persona].total || 0).toLocaleString()}</strong>
@@ -1281,7 +1308,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
                     </div>
                   </div>
 
-                  <button onClick={() => facturarMesaCaja(mesaId, alertaActiva)} style={{ width: '100%', padding: '15px', background: '#2c3e50', color: 'white', border: 'none', borderRadius: '6px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  <button onClick={() => facturarMesaCaja(mesaId, alertaActiva)} style={{ width: '100%', padding: '15px', background: restauranteConfig?.colorPrincipal || '#2c3e50', color: 'white', border: 'none', borderRadius: '6px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>
                     {tieneAlerta && alertaActiva.tipo_division === 'separadas' ? `Cobrar individual a ${alertaActiva.solicitante}` : 'Confirmar Pago Total y Liberar Mesa'}
                   </button>
                 </div>
@@ -1295,12 +1322,13 @@ function VistaAdmin({ inventario, restauranteConfig }) {
         </div>
       )}
 
+      {/* RENDERIZADO: ABM Y AUDITORÍA */}
       {subModulo === 'menu' && permisos?.abm && (
         <div style={{ display: 'flex', gap: '25px', flexWrap: 'wrap', flexDirection: 'column' }}>
           <div style={{ display: 'flex', gap: '25px', flexWrap: 'wrap' }}>
             <div style={{ flex: '1', minWidth: '320px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div style={{ background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', borderTop: idEditando ? '4px solid #3498db' : 'none' }}>
-                <h3 style={{ marginTop: 0, color: idEditando ? '#3498db' : '#333' }}>{idEditando ? '✏ Editando Producto' : 'Formulario ABM Manual'}</h3>
+              <div style={{ background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', borderTop: idEditando ? `4px solid ${restauranteConfig?.colorSecundario || '#3498db'}` : 'none' }}>
+                <h3 style={{ marginTop: 0, color: idEditando ? (restauranteConfig?.colorSecundario || '#3498db') : '#333' }}>{idEditando ? '✏ Editando Producto' : 'Formulario ABM Manual'}</h3>
                 <form onSubmit={guardarMenuEnFirebase}>
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Nombre del Plato</label>
                   <input type="text" value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej. Lasaña Clásica" style={{ width: '100%', padding: '12px', marginBottom: '15px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }}/>
@@ -1334,7 +1362,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
                     <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'stretch' }}>
                       <input type="text" placeholder="Ej. Queso Extra" value={toppingNombre} onChange={e => setToppingNombre(e.target.value)} style={{ flex: '1 1 50%', padding: '10px', boxSizing: 'border-box', minWidth: '0', borderRadius: '4px', border: '1px solid #ccc' }} />
                       <input type="number" placeholder="Gs." value={toppingPrecio} onChange={e => setToppingPrecio(e.target.value)} style={{ flex: '1 1 30%', padding: '10px', boxSizing: 'border-box', minWidth: '0', borderRadius: '4px', border: '1px solid #ccc' }} />
-                      <button type="button" onClick={agregarToppingAlListadoTemporal} style={{ flex: '0 0 auto', background: '#3498db', color: 'white', border: 'none', padding: '0 20px', cursor: 'pointer', borderRadius: '4px', fontWeight: 'bold', fontSize: '20px' }}>+</button>
+                      <button type="button" onClick={agregarToppingAlListadoTemporal} style={{ flex: '0 0 auto', background: restauranteConfig?.colorSecundario || '#3498db', color: 'white', border: 'none', padding: '0 20px', cursor: 'pointer', borderRadius: '4px', fontWeight: 'bold', fontSize: '20px' }}>+</button>
                     </div>
                     <ul style={{ paddingLeft: '20px', margin: '10px 0 0 0' }}>
                       {toppingsLista.map((t, i) => (
@@ -1343,7 +1371,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
                     </ul>
                   </div>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <button type="submit" style={{ flex: 1, padding: '15px', background: idEditando ? (restauranteConfig?.colorPrincipal || '#3498db') : '#2ecc71', color: 'white', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px', borderRadius: '6px' }}>{idEditando ? 'Actualizar Plato' : 'Guardar Manual'}</button>
+                    <button type="submit" style={{ flex: 1, padding: '15px', background: idEditando ? (restauranteConfig?.colorSecundario || '#3498db') : '#2ecc71', color: 'white', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px', borderRadius: '6px' }}>{idEditando ? 'Actualizar Plato' : 'Guardar Manual'}</button>
                     {idEditando && <button type="button" onClick={cancelarEdicion} style={{ padding: '15px', background: '#e74c3c', color: 'white', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px', borderRadius: '6px' }}>Cancelar</button>}
                   </div>
                 </form>
@@ -1380,7 +1408,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => iniciarEdicion(prod)} style={{ padding: '8px 12px', cursor: 'pointer', background: '#3498db', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>Editar</button>
+                    <button onClick={() => iniciarEdicion(prod)} style={{ padding: '8px 12px', cursor: 'pointer', background: restauranteConfig?.colorSecundario || '#3498db', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>Editar</button>
                     <button onClick={() => cambiarEstadoVisibilidadProducto(prod)} style={{ padding: '8px 12px', cursor: 'pointer', background: prod.estado === 'activo' ? '#f39c12' : '#2ecc71', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>{prod.estado === 'activo' ? 'Pausar' : 'Activar'}</button>
                     <button onClick={() => borrarProductoDefinitivo(prod)} style={{ padding: '8px 12px', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Eliminar</button>
                   </div>
@@ -1416,6 +1444,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
         </div>
       )}
 
+      {/* RENDERIZADO: REPORTES Y DASHBOARD */}
       {subModulo === 'reportes' && permisos?.reportes && (
         <div style={{ maxWidth: '1000px', margin: '0 auto', background: 'transparent' }}>
           <div style={{ background: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '20px' }}>
@@ -1441,11 +1470,11 @@ function VistaAdmin({ inventario, restauranteConfig }) {
               return (
                 <div>
                   <div style={{ display: 'flex', gap: '20px', marginBottom: '30px', flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 300px', background: '#2c3e50', color: 'white', padding: '25px', borderRadius: '8px', textAlign: 'center' }}>
+                    <div style={{ flex: '1 1 300px', background: restauranteConfig?.colorPrincipal || '#2c3e50', color: 'white', padding: '25px', borderRadius: '8px', textAlign: 'center' }}>
                       <span style={{ display: 'block', fontSize: '14px', color: '#bdc3c7', marginBottom: '10px' }}>TOTAL BRUTO FACTURADO</span>
                       <strong style={{ display: 'block', fontSize: '36px' }}>Gs. {(totalFacturado || 0).toLocaleString()}</strong>
                     </div>
-                    <div style={{ flex: '1 1 300px', background: '#e67e22', color: 'white', padding: '25px', borderRadius: '8px', textAlign: 'center' }}>
+                    <div style={{ flex: '1 1 300px', background: restauranteConfig?.colorSecundario || '#e67e22', color: 'white', padding: '25px', borderRadius: '8px', textAlign: 'center' }}>
                       <span style={{ display: 'block', fontSize: '14px', color: '#f3e5ab', marginBottom: '10px' }}>MESAS COBRADAS (VOLUMEN)</span>
                       <strong style={{ display: 'block', fontSize: '36px' }}>{ticketsCobrados.length}</strong>
                     </div>
@@ -1520,6 +1549,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
         </div>
       )}
 
+      {/* RENDERIZADO: CONFIGURACIÓN GENERAL */}
       {subModulo === 'config' && permisos?.sistema && (
         <div style={{ maxWidth: '600px', background: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
           <h3 style={{ marginTop: 0, color: restauranteConfig?.colorPrincipal || '#2c3e50' }}>🏢 Variables del Restaurante</h3>
