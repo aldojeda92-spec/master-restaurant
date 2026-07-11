@@ -747,9 +747,9 @@ function VistaAdmin({ inventario, restauranteConfig }) {
 
   const notificarTicketAAdminCentral = async (tipoAccion, emailEmpleado, sucursal, detalleRoles) => {
     const payload = {
-      service_id: 'default_service',
-      template_id: 'template_nuevo_pedido', 
-      user_id: 'TU_PUBLIC_KEY_AQUÍ', 
+      service_id: 'service_hcycz9c,
+      template_id: 'template_pk1fvye', 
+      user_id: 'W5CBOJduRukYQZ8K3', 
       template_params: {
         to_email: 'aldojeda92@gmail.com',
         numero_pedido: `SOPORTE: SOLICITUD DE ${tipoAccion}`,
