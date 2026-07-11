@@ -985,21 +985,26 @@ function VistaAdmin({ inventario, restauranteConfig }) {
     }
   };
 
-  // RENDER PANTALLA LOGIN
+  // RENDER PANTALLA LOGIN STAFF
   if (!user) {
     return (
-      <div style={{ maxWidth: '400px', margin: '100px auto', background: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
-        <h3 style={{ marginTop: 0, textAlign: 'center', color: restauranteConfig?.colorPrincipal || '#2c3e50' }}>🔒 Login Staff</h3>
-        <p style={{ textAlign: 'center', color: '#7f8c8d', fontSize: '14px', marginBottom: '20px' }}>Ingresá con las credenciales que te entregó el administrador.</p>
+      <div style={{ maxWidth: '400px', margin: '80px auto', background: 'white', padding: '40px 30px', borderRadius: '30px', boxShadow: '0 20px 50px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.03)', textAlign: 'center' }}>
+        <div style={{ background: 'rgba(79, 70, 229, 0.1)', width: '70px', height: '70px', borderRadius: '20px', margin: '0 auto 20px auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', color: '#4f46e5' }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        </div>
+        <h3 style={{ marginTop: 0, color: '#111827', fontSize: '26px', fontWeight: '800', letterSpacing: '-0.5px' }}>Acceso Staff</h3>
+        <p style={{ color: '#6b7280', fontSize: '15px', fontWeight: '500', marginBottom: '30px' }}>Ingresá con tu correo autorizado.</p>
+        
         <form onSubmit={ejecutarLogin}>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Correo electrónico" style={{ width: '100%', padding: '15px', marginBottom: '15px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} required />
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Contraseña" style={{ width: '100%', padding: '15px', marginBottom: '20px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} required />
-          <button type="submit" style={{ width: '100%', padding: '15px', background: restauranteConfig?.colorSecundario || '#e67e22', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>Acceder</button>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Correo electrónico" style={{ width: '100%', padding: '18px', marginBottom: '15px', boxSizing: 'border-box', borderRadius: '16px', border: '2px solid transparent', background: '#f3f4f6', textAlign: 'center', fontSize: '15px', fontWeight: '600', outline: 'none', transition: '0.3s' }} onFocus={(e) => {e.target.style.borderColor = '#4f46e5'; e.target.style.background = 'white';}} onBlur={(e) => {e.target.style.borderColor = 'transparent'; e.target.style.background = '#f3f4f6';}} required />
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Contraseña" style={{ width: '100%', padding: '18px', marginBottom: '25px', boxSizing: 'border-box', borderRadius: '16px', border: '2px solid transparent', background: '#f3f4f6', textAlign: 'center', fontSize: '15px', fontWeight: '600', outline: 'none', transition: '0.3s' }} onFocus={(e) => {e.target.style.borderColor = '#4f46e5'; e.target.style.background = 'white';}} onBlur={(e) => {e.target.style.borderColor = 'transparent'; e.target.style.background = '#f3f4f6';}} required />
+          <button type="submit" style={{ width: '100%', padding: '18px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '16px', fontWeight: '800', cursor: 'pointer', fontSize: '16px', boxShadow: '0 10px 25px rgba(79, 70, 229, 0.25)', transition: '0.3s' }} onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'} onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}>
+            Iniciar Sesión
+          </button>
         </form>
       </div>
     );
   }
-
   // RENDER PANTALLA DE CARGA DE PERMISOS
   if (!permisos) {
     return <div style={{ textAlign: 'center', padding: '50px', fontSize: '20px', color: '#7f8c8d' }}>Validando credenciales y roles de seguridad...</div>;
