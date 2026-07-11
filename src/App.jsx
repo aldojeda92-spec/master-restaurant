@@ -33,9 +33,9 @@ const obtenerColorTextoContraste = (hexColor) => {
 // APP PRINCIPAL (CON GUARDIA DE TRÁFICO)
 // ==========================================
 export default function App() {
-  // INTERCEPTOR DE RUTA PARA EL SÚPER ADMIN
-  const rutaActual = window.location.pathname;
-  if (rutaActual === '/panel-admin') {
+ // INTERCEPTOR DE RUTA PARA EL SÚPER ADMIN (A prueba de Vercel)
+  const parametros = new URLSearchParams(window.location.search);
+  if (parametros.get('master') === 'true') {
     return <SuperAdminDashboard />;
   }
 
