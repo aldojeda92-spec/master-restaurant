@@ -100,7 +100,10 @@ export default function App() {
           <p style={{ marginBottom: '15px', fontWeight: '600', color: '#6b7280', fontSize: '15px' }}>¿A nombre de quién hacemos el pedido?</p>
           <input type="text" value={inputNombreTemp} onChange={e => setInputNombreTemp(e.target.value)} placeholder="Tu nombre o apodo" style={{ width: '100%', padding: '18px', marginBottom: '25px', boxSizing: 'border-box', borderRadius: '16px', border: '2px solid transparent', background: '#f3f4f6', fontSize: '16px', fontWeight: '600', textAlign: 'center', color: '#111827', outline: 'none', transition: '0.3s' }} onFocus={(e) => {e.target.style.borderColor = '#4f46e5'; e.target.style.background = 'white';}} onBlur={(e) => {e.target.style.borderColor = 'transparent'; e.target.style.background = '#f3f4f6';}} />
           
-          <button onClick={() => { if (inputNombreTemp.trim() && mesaAsignada) setNombreComensal(inputNombreTemp.trim()); else alert("Completá tu nombre y mesa."); }} style={{ width: '100%', padding: '18px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '16px', fontWeight: '800', fontSize: '16px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(79, 70, 229, 0.25)', transition: '0.3s' }} onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'} onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}>
+          {/* BOTÓN CON CONTRASTE DINÁMICO */}
+          <button onClick={() => { if (inputNombreTemp.trim() && mesaAsignada) setNombreComensal(inputNombreTemp.trim()); else alert("Completá tu nombre y mesa."); }} 
+            style={{ width: '100%', padding: '18px', background: config?.colorPrimario || '#4f46e5', color: obtenerColorTextoContraste(config?.colorPrimario || '#4f46e5'), border: 'none', borderRadius: '16px', fontWeight: '800', fontSize: '16px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(79, 70, 229, 0.25)', transition: '0.3s' }} 
+            onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'} onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}>
             Ver el Menú
           </button>
           
@@ -108,7 +111,7 @@ export default function App() {
         </div>
       </div>
     );
-  }
+}
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
