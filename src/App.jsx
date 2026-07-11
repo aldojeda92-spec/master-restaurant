@@ -64,26 +64,37 @@ export default function App() {
 
   if (vistaActual === 'cliente' && !nombreComensal) {
     return (
-      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-        <div style={{ background: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', maxWidth: '400px', width: '100%', textAlign: 'center' }}>
+      <div style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', background: 'radial-gradient(circle at top center, #ffffff 0%, #f3f4f6 100%)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div style={{ background: 'white', padding: '40px 30px', borderRadius: '30px', boxShadow: '0 20px 50px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.03)', maxWidth: '400px', width: '100%', textAlign: 'center' }}>
+          
           {config?.logoUrl ? (
-            <img src={config.logoUrl} alt="Logo" style={{ maxWidth: '200px', maxHeight: '200px', objectFit: 'contain', marginBottom: '20px' }} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} />
+            <div style={{ background: '#f8f9fa', width: '120px', height: '120px', borderRadius: '50%', margin: '0 auto 25px auto', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+              <img src={config.logoUrl} alt="Logo" style={{ maxWidth: '80%', maxHeight: '80%', objectFit: 'contain' }} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} />
+            </div>
           ) : (
-            <h2 style={{ color: config?.colorPrincipal || '#2c3e50', marginTop: 0 }}>¡Bienvenido a {config?.nombre}!</h2>
+            <div style={{ background: 'rgba(79, 70, 229, 0.1)', width: '80px', height: '80px', borderRadius: '24px', margin: '0 auto 25px auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px' }}>🍽️</div>
           )}
+
+          <h2 style={{ color: '#111827', marginTop: 0, fontSize: '28px', fontWeight: '800', letterSpacing: '-1px' }}>{config?.nombre}</h2>
+          
           {mesaAsignada ? (
-            <p style={{ color: '#7f8c8d', marginBottom: '20px' }}>Estás en la <strong>Mesa {mesaAsignada}</strong>.</p>
+            <div style={{ background: 'rgba(79, 70, 229, 0.05)', color: '#4f46e5', padding: '10px 20px', borderRadius: '20px', display: 'inline-block', fontWeight: '800', marginBottom: '30px', fontSize: '14px' }}>
+              📍 Mesa {mesaAsignada}
+            </div>
           ) : (
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>¿En qué mesa estás?</label>
-              <input type="number" value={mesaAsignada} onChange={e => setMesaAsignada(e.target.value)} placeholder="Ej: 5" style={{ width: '100%', padding: '12px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc', textAlign: 'center', fontSize: '18px' }} />
+            <div style={{ marginBottom: '25px' }}>
+              <input type="number" value={mesaAsignada} onChange={e => setMesaAsignada(e.target.value)} placeholder="Número de Mesa" style={{ width: '100%', padding: '18px', boxSizing: 'border-box', borderRadius: '16px', border: '2px solid transparent', background: '#f3f4f6', textAlign: 'center', fontSize: '16px', fontWeight: '600', color: '#111827', outline: 'none', transition: '0.3s' }} onFocus={(e) => {e.target.style.borderColor = '#4f46e5'; e.target.style.background = 'white';}} onBlur={(e) => {e.target.style.borderColor = 'transparent'; e.target.style.background = '#f3f4f6';}} />
             </div>
           )}
-          <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold', color: config?.colorPrincipal || '#34495e' }}>Para separar tu cuenta luego, dinos tu nombre:</label>
-          <input type="text" value={inputNombreTemp} onChange={e => setInputNombreTemp(e.target.value)} placeholder="Tu nombre o apodo" style={{ width: '100%', padding: '12px', marginBottom: '20px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc', fontSize: '16px', textAlign: 'center' }} />
-          <button onClick={() => { if (inputNombreTemp.trim() && mesaAsignada) setNombreComensal(inputNombreTemp.trim()); else alert("Completá tu nombre y mesa."); }} style={{ width: '100%', padding: '15px', background: config?.colorSecundario || '#e67e22', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>Ver el Menú</button>
           
-          <button onClick={() => setVistaActual('admin')} style={{ background: 'none', border: 'none', color: '#95a5a6', marginTop: '20px', textDecoration: 'underline', cursor: 'pointer' }}>Ingreso Staff / Cocina</button>
+          <p style={{ marginBottom: '15px', fontWeight: '600', color: '#6b7280', fontSize: '15px' }}>¿A nombre de quién hacemos el pedido?</p>
+          <input type="text" value={inputNombreTemp} onChange={e => setInputNombreTemp(e.target.value)} placeholder="Tu nombre o apodo" style={{ width: '100%', padding: '18px', marginBottom: '25px', boxSizing: 'border-box', borderRadius: '16px', border: '2px solid transparent', background: '#f3f4f6', fontSize: '16px', fontWeight: '600', textAlign: 'center', color: '#111827', outline: 'none', transition: '0.3s' }} onFocus={(e) => {e.target.style.borderColor = '#4f46e5'; e.target.style.background = 'white';}} onBlur={(e) => {e.target.style.borderColor = 'transparent'; e.target.style.background = '#f3f4f6';}} />
+          
+          <button onClick={() => { if (inputNombreTemp.trim() && mesaAsignada) setNombreComensal(inputNombreTemp.trim()); else alert("Completá tu nombre y mesa."); }} style={{ width: '100%', padding: '18px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '16px', fontWeight: '800', fontSize: '16px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(79, 70, 229, 0.25)', transition: '0.3s' }} onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'} onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}>
+            Ver el Menú
+          </button>
+          
+          <button onClick={() => setVistaActual('admin')} style={{ background: 'none', border: 'none', color: '#9ca3af', marginTop: '25px', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}>Ingreso Staff / Cocina</button>
         </div>
       </div>
     );
