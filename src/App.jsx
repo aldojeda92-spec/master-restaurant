@@ -8,16 +8,30 @@ import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebas
 // ==========================================
 const getTenantId = () => {
   const hostname = window.location.hostname;
-  // Fallback: Si estamos probando en local o en el dominio genérico de Vercel, usamos "demo"
   if (hostname === 'localhost' || hostname.includes('vercel.app')) {
     return 'demo';
   }
-  // Si es un dominio real (ej: resto1.midominio.com), extrae "resto1"
   return hostname.split('.')[0];
 };
 
 const tenantId = getTenantId();
 
+// ==========================================
+// HELPER: CONTRASTE DINÁMICO (ACCESIBILIDAD)
+// ==========================================
+const obtenerColorTextoContraste = (hexColor) => {
+  const colorBase = hexColor || '#2c3e50'; 
+  const hex = colorBase.replace('#', '');
+  const r = parseInt(hex.substr(0, 2), 16) || 0;
+  const g = parseInt(hex.substr(2, 2), 16) || 0;
+  const b = parseInt(hex.substr(4, 2), 16) || 0;
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  return (yiq >= 128) ? '#111827' : '#ffffff'; 
+};
+
+// ==========================================
+// APP PRINCIPAL
+// ==========================================
 export default function App() {
   const [vistaActual, setVistaActual] = useState('cliente'); 
   const [productos, setProductos] = useState([]);
@@ -45,7 +59,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // Lectura aislada por inquilino
     const unsubscribeProd = onSnapshot(collection(db, `restaurantes/${tenantId}/productos`), (snapshot) => {
       const docs = [];
       snapshot.forEach((doc) => docs.push({ ...doc.data(), id: doc.id }));
@@ -55,16 +68,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // Lectura de configuración aislada
     const unsubscribeConfig = onSnapshot(doc(db, `restaurantes/${tenantId}/configuracion`, "datos"), (docSnap) => {
       if (docSnap.exists()) setConfig(docSnap.data());
     });
     return () => unsubscribeConfig();
   }, []);
 
+  // RENDER PANTALLA BIENVENIDA (SOFT UI)
   if (vistaActual === 'cliente' && !nombreComensal) {
     return (
-      <div style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', background: 'radial-gradient(circle at top center, #ffffff 0%, #f3f4f6 100%)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div style={{ fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif', background: 'radial-gradient(circle at top center, #ffffff 0%, #f3f4f6 100%)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
         <div style={{ background: 'white', padding: '40px 30px', borderRadius: '30px', boxShadow: '0 20px 50px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.03)', maxWidth: '400px', width: '100%', textAlign: 'center' }}>
           
           {config?.logoUrl ? (
@@ -83,14 +96,14 @@ export default function App() {
             </div>
           ) : (
             <div style={{ marginBottom: '25px' }}>
-              <input type="number" value={mesaAsignada} onChange={e => setMesaAsignada(e.target.value)} placeholder="Número de Mesa" style={{ width: '100%', padding: '18px', boxSizing: 'border-box', borderRadius: '16px', border: '2px solid transparent', background: '#f3f4f6', textAlign: 'center', fontSize: '16px', fontWeight: '600', color: '#111827', outline: 'none', transition: '0.3s' }} onFocus={(e) => {e.target.style.borderColor = '#4f46e5'; e.target.style.background = 'white';}} onBlur={(e) => {e.target.style.borderColor = 'transparent'; e.target.style.background = '#f3f4f6';}} />
+              <input type="number" value={mesaAsignada} onChange={e => setMesaAsignada(e.target.value)} placeholder="Número de Mesa" style={{ width: '100%', padding: '18px', boxSizing: 'border-box', borderRadius: '16px', border: '2px solid transparent', background: '#f3f4f6', textAlign: 'center', fontSize: '16px', fontWeight: '600', color: '#111827', outline: 'none', transition: '0.3s' }} onFocus={(e) => {e.target.style.borderColor = config?.colorPrincipal || '#2c3e50'; e.target.style.background = 'white';}} onBlur={(e) => {e.target.style.borderColor = 'transparent'; e.target.style.background = '#f3f4f6';}} />
             </div>
           )}
           
           <p style={{ marginBottom: '15px', fontWeight: '600', color: '#6b7280', fontSize: '15px' }}>¿A nombre de quién hacemos el pedido?</p>
-          <input type="text" value={inputNombreTemp} onChange={e => setInputNombreTemp(e.target.value)} placeholder="Tu nombre o apodo" style={{ width: '100%', padding: '18px', marginBottom: '25px', boxSizing: 'border-box', borderRadius: '16px', border: '2px solid transparent', background: '#f3f4f6', fontSize: '16px', fontWeight: '600', textAlign: 'center', color: '#111827', outline: 'none', transition: '0.3s' }} onFocus={(e) => {e.target.style.borderColor = '#4f46e5'; e.target.style.background = 'white';}} onBlur={(e) => {e.target.style.borderColor = 'transparent'; e.target.style.background = '#f3f4f6';}} />
+          <input type="text" value={inputNombreTemp} onChange={e => setInputNombreTemp(e.target.value)} placeholder="Tu nombre o apodo" style={{ width: '100%', padding: '18px', marginBottom: '25px', boxSizing: 'border-box', borderRadius: '16px', border: '2px solid transparent', background: '#f3f4f6', fontSize: '16px', fontWeight: '600', textAlign: 'center', color: '#111827', outline: 'none', transition: '0.3s' }} onFocus={(e) => {e.target.style.borderColor = config?.colorPrincipal || '#2c3e50'; e.target.style.background = 'white';}} onBlur={(e) => {e.target.style.borderColor = 'transparent'; e.target.style.background = '#f3f4f6';}} />
           
-          <button onClick={() => { if (inputNombreTemp.trim() && mesaAsignada) setNombreComensal(inputNombreTemp.trim()); else alert("Completá tu nombre y mesa."); }} style={{ width: '100%', padding: '18px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '16px', fontWeight: '800', fontSize: '16px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(79, 70, 229, 0.25)', transition: '0.3s' }} onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'} onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}>
+          <button onClick={() => { if (inputNombreTemp.trim() && mesaAsignada) setNombreComensal(inputNombreTemp.trim()); else alert("Completá tu nombre y mesa."); }} style={{ width: '100%', padding: '18px', background: config?.colorPrincipal || '#2c3e50', color: obtenerColorTextoContraste(config?.colorPrincipal), border: 'none', borderRadius: '16px', fontWeight: '800', fontSize: '16px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', transition: '0.3s' }} onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'} onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}>
             Ver el Menú
           </button>
           
@@ -101,15 +114,15 @@ export default function App() {
   }
 
   return (
-    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <nav style={{ background: config?.colorPrincipal || '#2c3e50', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white', boxShadow: '0 2px 5px rgba(0,0,0,0.2)', flexWrap: 'wrap', gap: '10px' }}>
-        <h2 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {config?.logoUrl ? <img src={config.logoUrl} alt="Logo" style={{ height: '50px', borderRadius: '4px', objectFit: 'contain', background: 'white', padding: '2px' }} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} /> : '🇮🇹'}
-          {config?.nombre} {mesaAsignada && `| Mesa ${mesaAsignada}`}
+    <div style={{ fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif', backgroundColor: '#f9fafb', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <nav style={{ background: config?.colorPrincipal || '#2c3e50', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: obtenerColorTextoContraste(config?.colorPrincipal), boxShadow: '0 4px 20px rgba(0,0,0,0.08)', flexWrap: 'wrap', gap: '10px', position: 'sticky', top: 0, zIndex: 100 }}>
+        <h2 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '12px', fontWeight: '800' }}>
+          {config?.logoUrl ? <img src={config.logoUrl} alt="Logo" style={{ height: '40px', width: '40px', borderRadius: '10px', objectFit: 'contain', background: 'white', padding: '4px' }} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} /> : <span style={{ fontSize: '24px'}}>🍽️</span>}
+          {config?.nombre} {mesaAsignada && <span style={{ background: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: '12px', fontSize: '14px' }}>Mesa {mesaAsignada}</span>}
         </h2>
-        <div style={{ display: 'flex', gap: '5px' }}>
-          <button onClick={() => setVistaActual('cliente')} style={{ padding: '8px 12px', cursor: 'pointer', background: vistaActual === 'cliente' ? (config?.colorSecundario || '#3498db') : 'rgba(255,255,255,0.2)', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', fontSize: '12px' }}>Vista Menú</button>
-          <button onClick={() => setVistaActual('admin')} style={{ padding: '8px 12px', cursor: 'pointer', background: vistaActual === 'admin' ? (config?.colorSecundario || '#e67e22') : 'rgba(255,255,255,0.2)', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', fontSize: '12px' }}>Panel Staff</button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={() => setVistaActual('cliente')} style={{ padding: '8px 16px', cursor: 'pointer', background: vistaActual === 'cliente' ? (config?.colorSecundario || '#3498db') : 'rgba(255,255,255,0.1)', color: vistaActual === 'cliente' ? obtenerColorTextoContraste(config?.colorSecundario) : obtenerColorTextoContraste(config?.colorPrincipal), border: 'none', borderRadius: '20px', fontWeight: 'bold', fontSize: '13px', transition: '0.3s' }}>Vista Menú</button>
+          <button onClick={() => setVistaActual('admin')} style={{ padding: '8px 16px', cursor: 'pointer', background: vistaActual === 'admin' ? (config?.colorSecundario || '#e67e22') : 'rgba(255,255,255,0.1)', color: vistaActual === 'admin' ? obtenerColorTextoContraste(config?.colorSecundario) : obtenerColorTextoContraste(config?.colorPrincipal), border: 'none', borderRadius: '20px', fontWeight: 'bold', fontSize: '13px', transition: '0.3s' }}>Panel Staff</button>
         </div>
       </nav>
 
@@ -121,11 +134,11 @@ export default function App() {
         )}
       </div>
 
-      <footer style={{ background: config?.colorPrincipal || '#2c3e50', color: '#bdc3c7', padding: '15px', marginTop: 'auto', borderTop: `3px solid ${config?.colorSecundario || '#e67e22'}`, fontSize: '12px', textAlign: 'center' }}>
+      <footer style={{ background: 'white', color: '#6b7280', padding: '25px', marginTop: 'auto', borderTop: '1px solid rgba(0,0,0,0.05)', fontSize: '13px', textAlign: 'center' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <strong>{config?.nombre}</strong> — {config?.direccion || 'No configurada'}
+          <strong style={{ color: '#111827' }}>{config?.nombre}</strong> — {config?.direccion || 'No configurada'}
           <br />
-          <span style={{ fontSize: '10px', color: '#7f8c8d' }}>Powered by Pasta B2B Platform © 2026</span>
+          <span style={{ fontSize: '11px', color: '#9ca3af', marginTop: '8px', display: 'inline-block' }}>Powered by Master Resto B2B Platform © 2026</span>
         </div>
       </footer>
     </div>
@@ -305,16 +318,14 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
   };
 
   return (
-    <div style={{ padding: '15px', maxWidth: '800px', margin: '0 auto' }}>
-      <div style={{ background: '#34495e', color: 'white', padding: '10px', borderRadius: '6px', marginBottom: '20px', textAlign: 'center', fontSize: '14px' }}>
-        Sesión activa como: <strong>{comensal}</strong>
-      </div>
-
-      <div style={{ display: 'flex', marginBottom: '20px', background: 'white', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-        <button onClick={() => {setTabMovil('pedir'); setIniciandoPago(false);}} style={{ flex: 1, padding: '15px', border: 'none', background: tabMovil === 'pedir' ? (restauranteConfig?.colorSecundario || '#3498db') : 'transparent', color: tabMovil === 'pedir' ? 'white' : '#7f8c8d', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>
+    <div style={{ padding: '15px', maxWidth: '800px', margin: '0 auto', fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif' }}>
+      
+      {/* TABS SUPERIORES */}
+      <div style={{ display: 'flex', marginBottom: '25px', background: 'white', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.02)' }}>
+        <button onClick={() => {setTabMovil('pedir'); setIniciandoPago(false);}} style={{ flex: 1, padding: '16px', border: 'none', background: tabMovil === 'pedir' ? (restauranteConfig?.colorPrincipal || '#2c3e50') : 'transparent', color: tabMovil === 'pedir' ? obtenerColorTextoContraste(restauranteConfig?.colorPrincipal) : '#6b7280', fontWeight: '800', fontSize: '15px', cursor: 'pointer', transition: 'all 0.3s ease' }}>
           🍝 Menú & Pedidos
         </button>
-        <button onClick={() => setTabMovil('cuenta')} style={{ flex: 1, padding: '15px', border: 'none', background: tabMovil === 'cuenta' ? '#27ae60' : 'transparent', color: tabMovil === 'cuenta' ? 'white' : '#7f8c8d', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>
+        <button onClick={() => setTabMovil('cuenta')} style={{ flex: 1, padding: '16px', border: 'none', background: tabMovil === 'cuenta' ? '#10b981' : 'transparent', color: tabMovil === 'cuenta' ? 'white' : '#6b7280', fontWeight: '800', fontSize: '15px', cursor: 'pointer', transition: 'all 0.3s ease' }}>
           🧾 Mi Cuenta
         </button>
       </div>
@@ -322,36 +333,36 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
       {tabMovil === 'pedir' ? (
         <div>
           {productoConfigurando ? (
-            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: `3px solid ${restauranteConfig?.colorSecundario || '#3498db'}`, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+            <div style={{ background: 'white', padding: '24px', borderRadius: '24px', boxShadow: '0 15px 40px rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.03)' }}>
               {productoConfigurando.imagenUrl && (
-                <img src={productoConfigurando.imagenUrl} alt={productoConfigurando.nombre} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '6px', marginBottom: '15px' }} />
+                <img src={productoConfigurando.imagenUrl} alt={productoConfigurando.nombre} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} style={{ width: '100%', height: '220px', objectFit: 'cover', borderRadius: '16px', marginBottom: '20px' }} />
               )}
               
-              <span style={{ display: 'inline-block', background: restauranteConfig?.colorSecundario || '#3498db', color: 'white', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', marginBottom: '10px' }}>{productoConfigurando.categoria || 'General'}</span>
-              <h3 style={{ marginTop: 0, color: '#2c3e50' }}>{productoConfigurando.nombre}</h3>
+              <span style={{ display: 'inline-block', background: 'rgba(79, 70, 229, 0.1)', color: restauranteConfig?.colorPrincipal || '#4f46e5', padding: '6px 12px', borderRadius: '30px', fontSize: '12px', fontWeight: '800', marginBottom: '12px' }}>{productoConfigurando.categoria || 'General'}</span>
+              <h3 style={{ marginTop: 0, color: '#111827', fontSize: '24px', fontWeight: '900', letterSpacing: '-0.5px' }}>{productoConfigurando.nombre}</h3>
               
               {productoConfigurando.precio_promo > 0 ? (
-                <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#e74c3c' }}>
-                  <span style={{ textDecoration: 'line-through', color: '#95a5a6', fontSize: '14px', marginRight: '10px' }}>Gs. {(productoConfigurando.precio_base || 0).toLocaleString()}</span>
+                <p style={{ fontSize: '22px', fontWeight: '900', color: '#ef4444' }}>
+                  <span style={{ textDecoration: 'line-through', color: '#9ca3af', fontSize: '15px', marginRight: '10px' }}>Gs. {(productoConfigurando.precio_base || 0).toLocaleString()}</span>
                   Gs. {productoConfigurando.precio_promo.toLocaleString()}
                 </p>
               ) : (
-                <p>Precio Base: <strong>Gs. {(productoConfigurando.precio_base || 0).toLocaleString()}</strong></p>
+                <p style={{ fontSize: '22px', fontWeight: '900', color: restauranteConfig?.colorPrincipal || '#10b981' }}>Gs. {(productoConfigurando.precio_base || 0).toLocaleString()}</p>
               )}
               
               {productoConfigurando.toppings && productoConfigurando.toppings.length > 0 && (
-                <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '6px', margin: '20px 0' }}>
-                  <strong style={{ display: 'block', marginBottom: '15px', color: '#2c3e50' }}>Agrega tus Extras:</strong>
+                <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '16px', margin: '25px 0', border: '1px solid #f3f4f6' }}>
+                  <strong style={{ display: 'block', marginBottom: '15px', color: '#374151', fontSize: '15px' }}>Agrega tus Extras:</strong>
                   {productoConfigurando.toppings.map((t, idx) => {
                     const toppingEnEstado = toppingsElegidos.find(item => item.nombre === t.nombre);
                     const cant = toppingEnEstado ? toppingEnEstado.cantidad : 0;
                     return (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', background: 'white', padding: '10px', borderRadius: '4px', border: '1px solid #eee' }}>
-                        <span style={{ fontSize: '15px' }}>{t.nombre} (+Gs.{(t.precio || 0).toLocaleString()})</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <button onClick={() => modificarCantidadTopping(t, -1)} style={{ padding: '6px 14px', background: cant > 0 ? '#e74c3c' : '#bdc3c7', color: 'white', border: 'none', borderRadius: '4px', cursor: cant > 0 ? 'pointer' : 'default', fontWeight: 'bold' }}>-</button>
-                          <span style={{ fontWeight: 'bold', width: '20px', textAlign: 'center', fontSize: '16px' }}>{cant}</span>
-                          <button onClick={() => modificarCantidadTopping(t, 1)} style={{ padding: '6px 14px', background: restauranteConfig?.colorSecundario || '#3498db', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>+</button>
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', background: 'white', padding: '12px 16px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#4b5563' }}>{t.nombre} (+Gs.{(t.precio || 0).toLocaleString()})</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                          <button onClick={() => modificarCantidadTopping(t, -1)} style={{ width: '32px', height: '32px', borderRadius: '50%', background: cant > 0 ? '#ef4444' : '#e5e7eb', color: cant > 0 ? 'white' : '#9ca3af', border: 'none', cursor: cant > 0 ? 'pointer' : 'default', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>-</button>
+                          <span style={{ fontWeight: '800', width: '15px', textAlign: 'center', fontSize: '15px' }}>{cant}</span>
+                          <button onClick={() => modificarCantidadTopping(t, 1)} style={{ width: '32px', height: '32px', borderRadius: '50%', background: restauranteConfig?.colorPrincipal || '#3b82f6', color: obtenerColorTextoContraste(restauranteConfig?.colorPrincipal), border: 'none', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
                         </div>
                       </div>
                     );
@@ -359,73 +370,75 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
                 </div>
               )}
 
-              <div style={{ marginBottom: '25px', textAlign: 'center' }}>
-                <strong style={{ display: 'block', marginBottom: '10px' }}>Cantidad de platos iguales:</strong>
-                <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', alignItems: 'center' }}>
-                  <button onClick={() => setCantidadTemp(Math.max(1, cantidadTemp - 1))} style={{ padding: '12px 25px', fontSize: '20px', fontWeight: 'bold', background: '#ecf0f1', border: 'none', borderRadius: '4px' }}>-</button>
-                  <span style={{ fontSize: '24px', fontWeight: 'bold', width: '40px', textAlign: 'center' }}>{cantidadTemp}</span>
-                  <button onClick={() => setCantidadTemp(cantidadTemp + 1)} style={{ padding: '12px 25px', fontSize: '20px', fontWeight: 'bold', background: '#ecf0f1', border: 'none', borderRadius: '4px' }}>+</button>
+              <div style={{ marginBottom: '30px', textAlign: 'center', background: '#f9fafb', padding: '20px', borderRadius: '16px' }}>
+                <strong style={{ display: 'block', marginBottom: '15px', color: '#374151', fontSize: '14px' }}>Cantidad de platos iguales:</strong>
+                <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', alignItems: 'center' }}>
+                  <button onClick={() => setCantidadTemp(Math.max(1, cantidadTemp - 1))} style={{ width: '45px', height: '45px', borderRadius: '12px', fontSize: '20px', fontWeight: 'bold', background: 'white', color: '#4b5563', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', cursor: 'pointer' }}>-</button>
+                  <span style={{ fontSize: '24px', fontWeight: '900', width: '30px', textAlign: 'center', color: '#111827' }}>{cantidadTemp}</span>
+                  <button onClick={() => setCantidadTemp(cantidadTemp + 1)} style={{ width: '45px', height: '45px', borderRadius: '12px', fontSize: '20px', fontWeight: 'bold', background: 'white', color: '#4b5563', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', cursor: 'pointer' }}>+</button>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
-                <button onClick={confirmarProductoAlCarrito} style={{ padding: '18px', background: '#2ecc71', color: 'white', border: 'none', borderRadius: '6px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer' }}>Añadir a mi Bandeja</button>
-                <button onClick={() => setProductoConfigurando(null)} style={{ padding: '15px', background: 'transparent', color: '#e74c3c', border: '2px solid #e74c3c', borderRadius: '6px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>Volver al Menú</button>
+              <div style={{ display: 'flex', gap: '12px', flexDirection: 'column' }}>
+                <button onClick={confirmarProductoAlCarrito} style={{ padding: '18px', background: restauranteConfig?.colorPrincipal || '#2c3e50', color: obtenerColorTextoContraste(restauranteConfig?.colorPrincipal), border: 'none', borderRadius: '16px', fontSize: '16px', fontWeight: '800', cursor: 'pointer', boxShadow: '0 10px 20px rgba(0,0,0,0.1)' }}>Añadir a mi Bandeja</button>
+                <button onClick={() => setProductoConfigurando(null)} style={{ padding: '16px', background: 'transparent', color: '#6b7280', border: 'none', borderRadius: '16px', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}>Cancelar / Volver</button>
               </div>
             </div>
           ) : (
             <div>
               {carrito.length > 0 && (
-                <div style={{ background: '#fff3cd', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '2px solid #ffeeba' }}>
-                  <h4 style={{ margin: '0 0 10px 0', color: '#856404' }}>Bandeja de {comensal} (No enviado)</h4>
+                <div style={{ background: '#fdf4ff', padding: '20px', borderRadius: '20px', marginBottom: '25px', border: '1px solid #fae8ff', boxShadow: '0 10px 25px rgba(232, 121, 249, 0.1)' }}>
+                  <h4 style={{ margin: '0 0 15px 0', color: '#a21caf', fontSize: '16px', fontWeight: '800' }}>Bandeja de {comensal} (Pendiente)</h4>
                   {carrito.map((item, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', marginBottom: '5px', borderBottom: '1px solid #ffeeba', paddingBottom: '5px' }}>
-                      <div>
-                        <strong>{item.cantidad}x {item.nombre}</strong> (Gs. {(item.subtotal_item || 0).toLocaleString()})
-                        {item.toppings && item.toppings.length > 0 && <span style={{ display: 'block', fontSize: '11px', color: '#666' }}>Con: {item.textToppings}</span>}
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', marginBottom: '10px', borderBottom: '1px solid #fae8ff', paddingBottom: '10px' }}>
+                      <div style={{ flex: 1 }}>
+                        <strong style={{ color: '#4a044e' }}>{item.cantidad}x {item.nombre}</strong> <span style={{ color: '#86198f', fontWeight: '600' }}>(Gs. {(item.subtotal_item || 0).toLocaleString()})</span>
+                        {item.toppings && item.toppings.length > 0 && <span style={{ display: 'block', fontSize: '12px', color: '#d946ef', marginTop: '4px' }}>Con: {item.textToppings}</span>}
                       </div>
-                      <button onClick={() => eliminarDelCarrito(i)} style={{ background: '#e74c3c', color: 'white', border: 'none', borderRadius: '4px', width: '30px', height: '30px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', flexShrink: 0 }}>X</button>
+                      <button onClick={() => eliminarDelCarrito(i)} style={{ background: '#fce7f3', color: '#be185d', border: 'none', borderRadius: '50%', width: '36px', height: '36px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>X</button>
                     </div>
                   ))}
-                  <button onClick={enviarComandaCocina} style={{ width: '100%', padding: '15px', background: restauranteConfig?.colorSecundario || '#e67e22', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '16px', marginTop: '10px', cursor: 'pointer' }}>
+                  <button onClick={enviarComandaCocina} style={{ width: '100%', padding: '18px', background: restauranteConfig?.colorSecundario || '#d946ef', color: obtenerColorTextoContraste(restauranteConfig?.colorSecundario || '#d946ef'), border: 'none', borderRadius: '16px', fontWeight: '800', fontSize: '15px', marginTop: '10px', cursor: 'pointer', boxShadow: '0 8px 20px rgba(0,0,0,0.1)' }}>
                     🔔 ORDENAR ESTO A COCINA
                   </button>
                 </div>
               )}
               
-              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '15px', marginBottom: '15px' }}>
+              {/* BARRA DE CATEGORÍAS (CONTRASTE DINÁMICO APLICADO) */}
+              <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '15px', marginBottom: '10px', scrollbarWidth: 'none' }}>
                 {categoriasUnicas.map(cat => (
-                  <button key={cat} onClick={() => setFiltroCategoriaCli(cat)} style={{ padding: '8px 15px', background: filtroCategoriaCli === cat ? (restauranteConfig?.colorPrincipal || '#2c3e50') : '#ecf0f1', color: filtroCategoriaCli === cat ? 'white' : '#2c3e50', border: 'none', borderRadius: '20px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  <button key={cat} onClick={() => setFiltroCategoriaCli(cat)} style={{ padding: '12px 24px', background: filtroCategoriaCli === cat ? (restauranteConfig?.colorPrincipal || '#2c3e50') : '#f3f4f6', color: filtroCategoriaCli === cat ? obtenerColorTextoContraste(restauranteConfig?.colorPrincipal) : '#4b5563', border: 'none', borderRadius: '30px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', boxShadow: filtroCategoriaCli === cat ? '0 8px 20px rgba(0,0,0,0.1)' : 'none' }}>
                     {cat}
                   </button>
                 ))}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
+              {/* LISTA DE PRODUCTOS (SOFT UI) */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', paddingBottom: '80px' }}>
                 {menuFiltrado.map(prod => (
-                  <div key={prod.id} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div key={prod.id} style={{ background: 'white', padding: '16px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     {prod.imagenUrl ? (
-                      <img src={prod.imagenUrl} alt={prod.nombre} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '6px', marginBottom: '10px', background: '#eee' }} />
+                      <img src={prod.imagenUrl} alt={prod.nombre} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '16px', marginBottom: '15px', background: '#f3f4f6' }} />
                     ) : (
-                      <div style={{ width: '100%', height: '140px', backgroundColor: '#f4f6f8', borderRadius: '6px', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bdc3c7', fontSize: '40px', fontWeight: 'bold' }}>
+                      <div style={{ width: '100%', height: '160px', backgroundColor: '#f9fafb', borderRadius: '16px', marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d1d5db', fontSize: '40px', fontWeight: '900' }}>
                         {prod.nombre.charAt(0).toUpperCase()}
                       </div>
                     )}
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <h3 style={{ margin: '0 0 8px 0', color: '#2c3e50', fontSize: '18px' }}>{prod.nombre}</h3>
-                        <span style={{ fontSize: '10px', background: '#eee', padding: '3px 6px', borderRadius: '3px', color: '#777' }}>{prod.categoria || 'General'}</span>
+                        <h3 style={{ margin: '0 0 8px 0', color: '#111827', fontSize: '18px', fontWeight: '800', lineHeight: '1.2' }}>{prod.nombre}</h3>
                       </div>
                       {prod.precio_promo > 0 ? (
-                        <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#e74c3c', margin: '0 0 15px 0' }}>
-                          <span style={{ textDecoration: 'line-through', color: '#95a5a6', fontSize: '13px', marginRight: '6px' }}>Gs. {(prod.precio_base || 0).toLocaleString()}</span>
-                          <br/>Gs. {prod.precio_promo.toLocaleString()}
+                        <p style={{ fontSize: '18px', fontWeight: '900', color: '#ef4444', margin: '0 0 15px 0' }}>
+                          <span style={{ textDecoration: 'line-through', color: '#9ca3af', fontSize: '13px', marginRight: '8px' }}>Gs. {(prod.precio_base || 0).toLocaleString()}</span>
+                          Gs. {prod.precio_promo.toLocaleString()}
                         </p>
                       ) : (
-                        <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#27ae60', margin: '0 0 15px 0' }}>Gs. {(prod.precio_base || 0).toLocaleString()}</p>
+                        <p style={{ fontSize: '18px', fontWeight: '900', color: restauranteConfig?.colorPrincipal || '#10b981', margin: '0 0 15px 0' }}>Gs. {(prod.precio_base || 0).toLocaleString()}</p>
                       )}
                     </div>
-                    <button onClick={() => iniciarConfiguracion(prod)} style={{ width: '100%', padding: '12px', background: restauranteConfig?.colorPrincipal || '#34495e', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px' }}>Agregar</button>
+                    {/* BOTÓN AGREGAR CON CONTRASTE DINÁMICO */}
+                    <button onClick={() => iniciarConfiguracion(prod)} style={{ width: '100%', padding: '14px', background: restauranteConfig?.colorPrincipal || '#34495e', color: obtenerColorTextoContraste(restauranteConfig?.colorPrincipal), border: 'none', borderRadius: '14px', cursor: 'pointer', fontWeight: '800', fontSize: '15px', transition: '0.3s' }}>Agregar al pedido</button>
                   </div>
                 ))}
               </div>
@@ -433,24 +446,27 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
           )}
         </div>
       ) : (
-        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
-          <h2 style={{ marginTop: 0, textAlign: 'center', color: '#2c3e50' }}>Cuenta de la Mesa {mesaFija}</h2>
+        <div style={{ background: 'white', padding: '25px', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.03)' }}>
+          <h2 style={{ marginTop: 0, textAlign: 'center', color: '#111827', fontWeight: '900' }}>Cuenta de la Mesa {mesaFija}</h2>
           
           {pedidosDeLaMesa.length === 0 ? (
-            <p style={{ textAlign: 'center', color: '#7f8c8d', padding: '30px 0' }}>Aún no han ordenado nada.</p>
+            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+              <span style={{ fontSize: '40px', display: 'block', marginBottom: '15px' }}>🍽️</span>
+              <p style={{ color: '#6b7280', fontWeight: '500' }}>Aún no han ordenado nada.</p>
+            </div>
           ) : (
             <div>
-              <div style={{ marginBottom: '20px' }}>
+              <div style={{ marginBottom: '25px' }}>
                 {Object.keys(resumenPorComensal).map((persona) => (
-                  <div key={persona} style={{ background: '#f8f9fa', padding: '15px', borderRadius: '6px', marginBottom: '15px', borderLeft: `4px solid ${restauranteConfig?.colorSecundario || '#3498db'}` }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ddd', paddingBottom: '8px', marginBottom: '8px' }}>
-                      <strong style={{ fontSize: '16px', color: '#2980b9' }}>Consumo de {persona}</strong>
-                      <strong style={{ fontSize: '16px' }}>Gs. {(resumenPorComensal[persona].total || 0).toLocaleString()}</strong>
+                  <div key={persona} style={{ background: '#f9fafb', padding: '20px', borderRadius: '16px', marginBottom: '15px', border: '1px solid #f3f4f6' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e5e7eb', paddingBottom: '12px', marginBottom: '12px' }}>
+                      <strong style={{ fontSize: '16px', color: '#4f46e5', fontWeight: '800' }}>Consumo de {persona}</strong>
+                      <strong style={{ fontSize: '16px', color: '#111827', fontWeight: '900' }}>Gs. {(resumenPorComensal[persona].total || 0).toLocaleString()}</strong>
                     </div>
                     {resumenPorComensal[persona].items.map((item, i) => (
-                      <div key={i} style={{ fontSize: '13px', marginBottom: '4px', color: '#555' }}>
+                      <div key={i} style={{ fontSize: '14px', marginBottom: '6px', color: '#4b5563', fontWeight: '500' }}>
                         {item.cantidad}x {item.nombre} 
-                        {item.toppings && item.toppings.length > 0 && <span style={{ color: '#7f8c8d' }}> (+ {item.textToppings})</span>}
+                        {item.toppings && item.toppings.length > 0 && <span style={{ color: '#9ca3af', fontSize: '12px' }}> (+ {item.textToppings})</span>}
                       </div>
                     ))}
                   </div>
@@ -458,104 +474,104 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
               </div>
 
               {alertaPagoActiva ? (
-                <div style={{ textAlign: 'center', marginTop: '20px', borderTop: '2px dashed #eee', paddingTop: '20px' }}>
-                  <div style={{ background: '#d4edda', color: '#155724', padding: '12px', borderRadius: '6px', marginBottom: '15px', fontWeight: 'bold', fontSize: '14px' }}>
+                <div style={{ textAlign: 'center', marginTop: '20px', borderTop: '2px dashed #e5e7eb', paddingTop: '25px' }}>
+                  <div style={{ background: '#ecfdf5', color: '#065f46', padding: '16px', borderRadius: '16px', marginBottom: '20px', fontWeight: '800', fontSize: '14px', border: '1px solid #a7f3d0' }}>
                     ✓ Cuenta solicitada en modalidad: {alertaPagoActiva.tipo_division === 'separadas' ? 'CUENTAS SEPARADAS' : 'PAGO ÚNICO'} ({alertaPagoActiva.metodo_solicitado.toUpperCase()})
                   </div>
-                  <button onClick={solicitarCuentaCaja} style={{ width: '100%', padding: '20px', background: '#e67e22', color: 'white', border: 'none', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 6px rgba(230, 126, 34, 0.3)' }}>
-                    ⚠️ LLAMAR AL MOZO (RE-LLAMAR POR DEMORA)
+                  <button onClick={solicitarCuentaCaja} style={{ width: '100%', padding: '20px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '16px', fontSize: '16px', fontWeight: '900', cursor: 'pointer', boxShadow: '0 10px 25px rgba(245, 158, 11, 0.2)' }}>
+                    ⚠️ RE-LLAMAR AL MOZO (DEMORA)
                   </button>
                 </div>
               ) : !iniciandoPago ? (
-                <div style={{ textAlign: 'center', marginTop: '20px', borderTop: '2px dashed #eee', paddingTop: '20px' }}>
-                  <span style={{ display: 'block', color: '#7f8c8d', fontSize: '14px' }}>Subtotal Consumido ({tipoDivision === 'separadas' ? 'Tu parte' : 'Toda la mesa'})</span>
-                  <h3 style={{ color: '#2c3e50', fontSize: '28px', marginTop: '5px' }}>Gs. {(subtotalCobro || 0).toLocaleString()}</h3>
-                  <button onClick={() => setIniciandoPago(true)} style={{ width: '100%', padding: '20px', background: restauranteConfig?.colorSecundario || '#3498db', color: 'white', border: 'none', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                <div style={{ textAlign: 'center', marginTop: '20px', borderTop: '2px dashed #e5e7eb', paddingTop: '25px' }}>
+                  <span style={{ display: 'block', color: '#6b7280', fontSize: '14px', fontWeight: '600' }}>Subtotal Consumido ({tipoDivision === 'separadas' ? 'Tu parte' : 'Toda la mesa'})</span>
+                  <h3 style={{ color: '#111827', fontSize: '32px', marginTop: '5px', fontWeight: '900', letterSpacing: '-1px' }}>Gs. {(subtotalCobro || 0).toLocaleString()}</h3>
+                  <button onClick={() => setIniciandoPago(true)} style={{ width: '100%', padding: '20px', background: restauranteConfig?.colorPrincipal || '#10b981', color: obtenerColorTextoContraste(restauranteConfig?.colorPrincipal), border: 'none', borderRadius: '16px', fontSize: '16px', fontWeight: '900', cursor: 'pointer', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
                     PEDIR LA CUENTA / PAGAR
                   </button>
                 </div>
               ) : (
                 <div style={{ animation: 'fadeIn 0.3s' }}>
-                  <div style={{ marginBottom: '20px', background: '#fff3cd', padding: '15px', borderRadius: '6px', border: '1px solid #ffeeba' }}>
-                    <strong style={{ display: 'block', marginBottom: '10px', color: '#856404' }}>¿Cómo van a pagar?</strong>
-                    <label style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', cursor: 'pointer', fontSize: '15px' }}>
-                      <input type="radio" name="pago" value="separadas" checked={tipoDivision === 'separadas'} onChange={() => setTipoDivision('separadas')} style={{ transform: 'scale(1.2)', marginRight: '10px' }} />
-                      Pagaré solo lo mío (Cuentas Separadas)
+                  <div style={{ marginBottom: '20px', background: '#fef3c7', padding: '20px', borderRadius: '16px', border: '1px solid #fde68a' }}>
+                    <strong style={{ display: 'block', marginBottom: '15px', color: '#92400e', fontSize: '16px' }}>¿Cómo van a pagar?</strong>
+                    <label style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', cursor: 'pointer', fontSize: '15px', fontWeight: '600', color: '#78350f' }}>
+                      <input type="radio" name="pago" value="separadas" checked={tipoDivision === 'separadas'} onChange={() => setTipoDivision('separadas')} style={{ transform: 'scale(1.3)', marginRight: '12px' }} />
+                      Pagaré solo lo mío (Separadas)
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '15px' }}>
-                      <input type="radio" name="pago" value="paga_uno" checked={tipoDivision === 'paga_uno'} onChange={() => setTipoDivision('paga_uno')} style={{ transform: 'scale(1.2)', marginRight: '10px' }} />
-                      Pagaré todo junto (Toda la Mesa)
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '15px', fontWeight: '600', color: '#78350f' }}>
+                      <input type="radio" name="pago" value="paga_uno" checked={tipoDivision === 'paga_uno'} onChange={() => setTipoDivision('paga_uno')} style={{ transform: 'scale(1.3)', marginRight: '12px' }} />
+                      Pagaré todo junto (Mesa entera)
                     </label>
                   </div>
 
-                  <div style={{ border: '2px solid #ecf0f1', padding: '20px', borderRadius: '8px', marginBottom: '25px', marginTop: '20px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '16px', color: '#7f8c8d' }}>
+                  <div style={{ border: '2px solid #f3f4f6', padding: '20px', borderRadius: '16px', marginBottom: '25px', marginTop: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', fontSize: '16px', color: '#4b5563', fontWeight: '600' }}>
                       <span>Subtotal Consumido:</span>
-                      <strong>Gs. {(subtotalCobro || 0).toLocaleString()}</strong>
+                      <strong style={{ color: '#111827' }}>Gs. {(subtotalCobro || 0).toLocaleString()}</strong>
                     </div>
 
-                    <div style={{ marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '15px' }}>
-                      <strong style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#2c3e50' }}>¿Deseas agregar Propina al Staff?</strong>
+                    <div style={{ marginBottom: '20px', borderBottom: '1px solid #f3f4f6', paddingBottom: '20px' }}>
+                      <strong style={{ display: 'block', marginBottom: '12px', fontSize: '15px', color: '#111827' }}>¿Deseas agregar Propina al Staff?</strong>
                       <div style={{ display: 'flex', gap: '10px' }}>
-                        <button onClick={() => setPropinaPct(0)} style={{ flex: 1, padding: '10px', background: propinaPct === 0 ? (restauranteConfig?.colorSecundario || '#3498db') : '#ecf0f1', color: propinaPct === 0 ? 'white' : '#333', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>0%</button>
-                        <button onClick={() => setPropinaPct(10)} style={{ flex: 1, padding: '10px', background: propinaPct === 10 ? (restauranteConfig?.colorSecundario || '#3498db') : '#ecf0f1', color: propinaPct === 10 ? 'white' : '#333', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>10%</button>
-                        <button onClick={() => setPropinaPct(15)} style={{ flex: 1, padding: '10px', background: propinaPct === 15 ? (restauranteConfig?.colorSecundario || '#3498db') : '#ecf0f1', color: propinaPct === 15 ? 'white' : '#333', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>15%</button>
+                        <button onClick={() => setPropinaPct(0)} style={{ flex: 1, padding: '12px', background: propinaPct === 0 ? (restauranteConfig?.colorPrincipal || '#4f46e5') : '#f3f4f6', color: propinaPct === 0 ? obtenerColorTextoContraste(restauranteConfig?.colorPrincipal) : '#4b5563', border: 'none', borderRadius: '12px', fontWeight: '800' }}>0%</button>
+                        <button onClick={() => setPropinaPct(10)} style={{ flex: 1, padding: '12px', background: propinaPct === 10 ? (restauranteConfig?.colorPrincipal || '#4f46e5') : '#f3f4f6', color: propinaPct === 10 ? obtenerColorTextoContraste(restauranteConfig?.colorPrincipal) : '#4b5563', border: 'none', borderRadius: '12px', fontWeight: '800' }}>10%</button>
+                        <button onClick={() => setPropinaPct(15)} style={{ flex: 1, padding: '12px', background: propinaPct === 15 ? (restauranteConfig?.colorPrincipal || '#4f46e5') : '#f3f4f6', color: propinaPct === 15 ? obtenerColorTextoContraste(restauranteConfig?.colorPrincipal) : '#4b5563', border: 'none', borderRadius: '12px', fontWeight: '800' }}>15%</button>
                       </div>
                     </div>
 
                     {propinaPct > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', fontSize: '16px', color: '#e67e22', fontWeight: 'bold' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '16px', color: '#10b981', fontWeight: '800' }}>
                         <span>Propina Sugerida ({propinaPct}%):</span>
                         <span>+ Gs. {(montoPropinaCobro || 0).toLocaleString()}</span>
                       </div>
                     )}
 
-                    <div style={{ background: restauranteConfig?.colorPrincipal || '#2c3e50', color: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center' }}>
-                      <span style={{ display: 'block', fontSize: '14px', marginBottom: '5px', color: '#bdc3c7' }}>Monto a Cobrarte</span>
-                      <strong style={{ display: 'block', fontSize: '28px' }}>Gs. {(totalGeneralCobro || 0).toLocaleString()}</strong>
+                    <div style={{ background: restauranteConfig?.colorPrincipal || '#111827', color: obtenerColorTextoContraste(restauranteConfig?.colorPrincipal), padding: '25px', borderRadius: '16px', textAlign: 'center', boxShadow: '0 10px 20px rgba(0,0,0,0.1)' }}>
+                      <span style={{ display: 'block', fontSize: '14px', marginBottom: '8px', opacity: 0.8, fontWeight: '600' }}>Monto Total a Pagar</span>
+                      <strong style={{ display: 'block', fontSize: '32px', fontWeight: '900', letterSpacing: '-1px' }}>Gs. {(totalGeneralCobro || 0).toLocaleString()}</strong>
                     </div>
                   </div>
 
-                  <div style={{ marginBottom: '20px' }}>
-                    <strong style={{ display: 'block', marginBottom: '10px' }}>Medio de pago requerido:</strong>
-                    <select value={formaDePago} onChange={(e) => setFormaDePago(e.target.value)} style={{ width: '100%', padding: '15px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc', marginBottom: '10px' }}>
+                  <div style={{ marginBottom: '25px' }}>
+                    <strong style={{ display: 'block', marginBottom: '12px', color: '#111827', fontSize: '15px' }}>Medio de pago requerido:</strong>
+                    <select value={formaDePago} onChange={(e) => setFormaDePago(e.target.value)} style={{ width: '100%', padding: '18px', fontSize: '16px', borderRadius: '12px', border: '2px solid transparent', background: '#f3f4f6', fontWeight: '600', color: '#111827', outline: 'none' }}>
                       <option value="efectivo">Cobro en Efectivo</option>
                       <option value="pos">Lector POS (Tarjetas)</option>
                       <option value="transferencia">Transferencia Bancaria</option>
                     </select>
 
                     {formaDePago === 'transferencia' && (
-                      <div style={{ background: '#d4edda', color: '#155724', padding: '15px', borderRadius: '5px', marginTop: '10px', border: '1px solid #c3e6cb', fontSize: '14px' }}>
-                        <strong style={{ display: 'block', marginBottom: '5px' }}>🏦 Realiza tu transferencia a:</strong>
-                        Banco: {restauranteConfig?.banco || 'N/A'}<br/>
-                        Cuenta: {restauranteConfig?.cuenta || 'N/A'}<br/>
-                        Titular: {restauranteConfig?.titular || 'N/A'}<br/>
-                        RUC: {restauranteConfig?.ruc || 'N/A'}
-                        <span style={{ display: 'block', marginTop: '10px', fontSize: '12px', opacity: 0.8 }}>* Presiona Confirmar y muestra el comprobante al mozo.</span>
+                      <div style={{ background: '#ecfdf5', color: '#065f46', padding: '20px', borderRadius: '16px', marginTop: '15px', border: '1px solid #a7f3d0', fontSize: '14px' }}>
+                        <strong style={{ display: 'block', marginBottom: '10px', fontSize: '15px' }}>🏦 Datos de Transferencia:</strong>
+                        Banco: <strong>{restauranteConfig?.banco || 'N/A'}</strong><br/>
+                        Cuenta: <strong>{restauranteConfig?.cuenta || 'N/A'}</strong><br/>
+                        Titular: <strong>{restauranteConfig?.titular || 'N/A'}</strong><br/>
+                        RUC: <strong>{restauranteConfig?.ruc || 'N/A'}</strong>
+                        <span style={{ display: 'block', marginTop: '15px', fontSize: '12px', opacity: 0.8, fontWeight: '600' }}>* Presiona Confirmar y muestra el comprobante al mozo.</span>
                       </div>
                     )}
                   </div>
 
-                  <div style={{ marginBottom: '25px', background: '#f8f9fa', padding: '15px', borderRadius: '6px', border: '1px solid #ddd' }}>
-                    <strong style={{ display: 'block', marginBottom: '10px', color: '#2c3e50' }}>🧾 Facturación</strong>
-                    <label style={{ display: 'flex', alignItems: 'center', marginBottom: '15px', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={!necesitaFactura} onChange={(e) => setNecesitaFactura(!e.target.checked)} style={{ transform: 'scale(1.3)', marginRight: '10px' }} />
+                  <div style={{ marginBottom: '30px', background: '#f9fafb', padding: '20px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
+                    <strong style={{ display: 'block', marginBottom: '15px', color: '#111827', fontSize: '15px' }}>🧾 Info Facturación</strong>
+                    <label style={{ display: 'flex', alignItems: 'center', marginBottom: '15px', cursor: 'pointer', fontWeight: '600', color: '#4b5563' }}>
+                      <input type="checkbox" checked={!necesitaFactura} onChange={(e) => setNecesitaFactura(!e.target.checked)} style={{ transform: 'scale(1.3)', marginRight: '12px' }} />
                       Consumidor Final (Sin nombre)
                     </label>
                     
                     {necesitaFactura && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        <input type="text" placeholder="RUC / CI" value={facturaRuc} onChange={e => setFacturaRuc(e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                        <input type="text" placeholder="Razón Social / Nombre Completo" value={facturaNombre} onChange={e => setFacturaNombre(e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '15px' }}>
+                        <input type="text" placeholder="RUC / CI" value={facturaRuc} onChange={e => setFacturaRuc(e.target.value)} style={{ padding: '16px', borderRadius: '12px', border: '2px solid transparent', background: 'white', fontWeight: '600', outline: 'none' }} />
+                        <input type="text" placeholder="Razón Social / Nombre Completo" value={facturaNombre} onChange={e => setFacturaNombre(e.target.value)} style={{ padding: '16px', borderRadius: '12px', border: '2px solid transparent', background: 'white', fontWeight: '600', outline: 'none' }} />
                       </div>
                     )}
                   </div>
 
-                  <button onClick={solicitarCuentaCaja} style={{ width: '100%', padding: '20px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 6px rgba(39, 174, 96, 0.3)' }}>
+                  <button onClick={solicitarCuentaCaja} style={{ width: '100%', padding: '20px', background: '#10b981', color: 'white', border: 'none', borderRadius: '16px', fontSize: '16px', fontWeight: '900', cursor: 'pointer', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.2)' }}>
                     🔔 CONFIRMAR Y PEDIR CUENTA
                   </button>
                   
-                  <button onClick={() => setIniciandoPago(false)} style={{ width: '100%', padding: '15px', background: 'transparent', color: '#e74c3c', border: 'none', marginTop: '10px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  <button onClick={() => setIniciandoPago(false)} style={{ width: '100%', padding: '18px', background: 'transparent', color: '#6b7280', border: 'none', marginTop: '10px', cursor: 'pointer', fontWeight: '800', fontSize: '15px' }}>
                     Cancelar / Volver
                   </button>
                 </div>
@@ -985,16 +1001,22 @@ function VistaAdmin({ inventario, restauranteConfig }) {
     }
   };
 
-  // RENDER PANTALLA LOGIN
+  // RENDER PANTALLA LOGIN STAFF (SOFT UI)
   if (!user) {
     return (
-      <div style={{ maxWidth: '400px', margin: '100px auto', background: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
-        <h3 style={{ marginTop: 0, textAlign: 'center', color: restauranteConfig?.colorPrincipal || '#2c3e50' }}>🔒 Login Staff</h3>
-        <p style={{ textAlign: 'center', color: '#7f8c8d', fontSize: '14px', marginBottom: '20px' }}>Ingresá con las credenciales que te entregó el administrador.</p>
+      <div style={{ fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif', maxWidth: '400px', margin: '80px auto', background: 'white', padding: '40px 30px', borderRadius: '30px', boxShadow: '0 20px 50px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.03)', textAlign: 'center' }}>
+        <div style={{ background: 'rgba(79, 70, 229, 0.1)', width: '70px', height: '70px', borderRadius: '20px', margin: '0 auto 20px auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>
+          <span style={{color: restauranteConfig?.colorPrincipal || '#4f46e5'}}>🔒</span>
+        </div>
+        <h3 style={{ marginTop: 0, color: '#111827', fontSize: '26px', fontWeight: '800', letterSpacing: '-0.5px' }}>Acceso Staff</h3>
+        <p style={{ color: '#6b7280', fontSize: '15px', fontWeight: '500', marginBottom: '30px' }}>Ingresá con tu correo autorizado.</p>
+        
         <form onSubmit={ejecutarLogin}>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Correo electrónico" style={{ width: '100%', padding: '15px', marginBottom: '15px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} required />
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Contraseña" style={{ width: '100%', padding: '15px', marginBottom: '20px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} required />
-          <button type="submit" style={{ width: '100%', padding: '15px', background: restauranteConfig?.colorSecundario || '#e67e22', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>Acceder</button>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Correo electrónico" style={{ width: '100%', padding: '18px', marginBottom: '15px', boxSizing: 'border-box', borderRadius: '16px', border: '2px solid transparent', background: '#f3f4f6', textAlign: 'center', fontSize: '15px', fontWeight: '600', outline: 'none', transition: '0.3s', color: '#111827' }} onFocus={(e) => {e.target.style.borderColor = restauranteConfig?.colorPrincipal || '#4f46e5'; e.target.style.background = 'white';}} onBlur={(e) => {e.target.style.borderColor = 'transparent'; e.target.style.background = '#f3f4f6';}} required />
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Contraseña" style={{ width: '100%', padding: '18px', marginBottom: '25px', boxSizing: 'border-box', borderRadius: '16px', border: '2px solid transparent', background: '#f3f4f6', textAlign: 'center', fontSize: '15px', fontWeight: '600', outline: 'none', transition: '0.3s', color: '#111827' }} onFocus={(e) => {e.target.style.borderColor = restauranteConfig?.colorPrincipal || '#4f46e5'; e.target.style.background = 'white';}} onBlur={(e) => {e.target.style.borderColor = 'transparent'; e.target.style.background = '#f3f4f6';}} required />
+          <button type="submit" style={{ width: '100%', padding: '18px', background: restauranteConfig?.colorPrincipal || '#4f46e5', color: obtenerColorTextoContraste(restauranteConfig?.colorPrincipal || '#4f46e5'), border: 'none', borderRadius: '16px', fontWeight: '800', cursor: 'pointer', fontSize: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', transition: '0.3s' }} onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'} onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}>
+            Iniciar Sesión
+          </button>
         </form>
       </div>
     );
@@ -1089,22 +1111,22 @@ function VistaAdmin({ inventario, restauranteConfig }) {
 
 
   return (
-    <div style={{ padding: '20px' }}>
+    <div style={{ padding: '20px', fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif' }}>
       
       {/* NAVEGACIÓN SUPERIOR DEL STAFF */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', background: 'white', padding: '15px', borderRadius: '6px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', background: 'white', padding: '15px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          {permisos?.cocina && <button onClick={() => setSubModulo('cocina')} style={{ padding: '12px 18px', background: subModulo === 'cocina' ? '#e74c3c' : '#bdc3c7', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>🔥 COCINA</button>}
-          {permisos?.caja && <button onClick={() => setSubModulo('caja')} style={{ padding: '12px 18px', background: subModulo === 'caja' ? '#27ae60' : '#bdc3c7', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>💰 CAJA ({Object.keys(mesasEnCaja).length})</button>}
-          {permisos?.abm && <button onClick={() => setSubModulo('menu')} style={{ padding: '12px 18px', background: subModulo === 'menu' ? (restauranteConfig?.colorPrincipal || '#2c3e50') : '#bdc3c7', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>⚙ ABM Menú</button>}
-          {permisos?.reportes && <button onClick={() => setSubModulo('reportes')} style={{ padding: '12px 18px', background: subModulo === 'reportes' ? '#8e44ad' : '#bdc3c7', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>📊 REPORTES</button>}
-          {permisos?.sistema && <button onClick={() => setSubModulo('config')} style={{ padding: '12px 18px', background: subModulo === 'config' ? '#f39c12' : '#bdc3c7', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>🏢 Sistema</button>}
-          {permisos?.admin && <button onClick={() => setSubModulo('staff')} style={{ padding: '12px 18px', background: subModulo === 'staff' ? '#34495e' : '#ecf0f1', color: subModulo === 'staff' ? 'white' : '#2c3e50', border: '2px solid #34495e', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>👥 STAFF / ROLES</button>}
+          {permisos?.cocina && <button onClick={() => setSubModulo('cocina')} style={{ padding: '12px 18px', background: subModulo === 'cocina' ? '#ef4444' : '#f3f4f6', color: subModulo === 'cocina' ? 'white' : '#4b5563', border: 'none', cursor: 'pointer', fontWeight: '800', borderRadius: '12px', transition: '0.3s' }}>🔥 COCINA</button>}
+          {permisos?.caja && <button onClick={() => setSubModulo('caja')} style={{ padding: '12px 18px', background: subModulo === 'caja' ? '#10b981' : '#f3f4f6', color: subModulo === 'caja' ? 'white' : '#4b5563', border: 'none', cursor: 'pointer', fontWeight: '800', borderRadius: '12px', transition: '0.3s' }}>💰 CAJA ({Object.keys(mesasEnCaja).length})</button>}
+          {permisos?.abm && <button onClick={() => setSubModulo('menu')} style={{ padding: '12px 18px', background: subModulo === 'menu' ? (restauranteConfig?.colorPrincipal || '#3b82f6') : '#f3f4f6', color: subModulo === 'menu' ? obtenerColorTextoContraste(restauranteConfig?.colorPrincipal) : '#4b5563', border: 'none', cursor: 'pointer', fontWeight: '800', borderRadius: '12px', transition: '0.3s' }}>⚙ ABM Menú</button>}
+          {permisos?.reportes && <button onClick={() => setSubModulo('reportes')} style={{ padding: '12px 18px', background: subModulo === 'reportes' ? '#8b5cf6' : '#f3f4f6', color: subModulo === 'reportes' ? 'white' : '#4b5563', border: 'none', cursor: 'pointer', fontWeight: '800', borderRadius: '12px', transition: '0.3s' }}>📊 REPORTES</button>}
+          {permisos?.sistema && <button onClick={() => setSubModulo('config')} style={{ padding: '12px 18px', background: subModulo === 'config' ? '#f59e0b' : '#f3f4f6', color: subModulo === 'config' ? 'white' : '#4b5563', border: 'none', cursor: 'pointer', fontWeight: '800', borderRadius: '12px', transition: '0.3s' }}>🏢 Sistema</button>}
+          {permisos?.admin && <button onClick={() => setSubModulo('staff')} style={{ padding: '12px 18px', background: subModulo === 'staff' ? '#111827' : '#f3f4f6', color: subModulo === 'staff' ? 'white' : '#111827', border: 'none', cursor: 'pointer', fontWeight: '800', borderRadius: '12px', transition: '0.3s' }}>👥 STAFF / ROLES</button>}
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <span style={{ fontSize: '13px', color: '#7f8c8d' }}>👤 {user?.email}</span>
-          <button onClick={() => signOut(auth)} style={{ padding: '8px 12px', background: 'transparent', color: '#c0392b', border: '2px solid #c0392b', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Salir</button>
+          <span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '600' }}>👤 {user?.email}</span>
+          <button onClick={() => signOut(auth)} style={{ padding: '10px 16px', background: 'transparent', color: '#ef4444', border: '2px solid #fee2e2', borderRadius: '12px', cursor: 'pointer', fontWeight: '800', transition: '0.3s' }}>Salir</button>
         </div>
       </div>
 
@@ -1582,7 +1604,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
             <label style={{ display: 'block', marginBottom: '15px', fontWeight: 'bold' }}>Titular:<input type="text" value={inputTitular} onChange={e => setInputTitular(e.target.value)} style={{ width: '100%', padding: '12px', marginTop: '5px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} /></label>
             <label style={{ display: 'block', marginBottom: '25px', fontWeight: 'bold' }}>RUC:<input type="text" value={inputRuc} onChange={e => setInputRuc(e.target.value)} style={{ width: '100%', padding: '12px', marginTop: '5px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} /></label>
             
-            <button type="submit" style={{ width: '100%', padding: '18px', background: restauranteConfig?.colorSecundario || '#2ecc71', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>Guardar Cambios de Configuración</button>
+            <button type="submit" style={{ width: '100%', padding: '18px', background: restauranteConfig?.colorSecundario || '#2ecc71', color: obtenerColorTextoContraste(restauranteConfig?.colorSecundario || '#2ecc71'), border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>Guardar Cambios de Configuración</button>
           </form>
         </div>
       )}
