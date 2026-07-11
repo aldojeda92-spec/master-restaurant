@@ -482,7 +482,18 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
                         <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#27ae60', margin: '0 0 15px 0' }}>Gs. {(prod.precio_base || 0).toLocaleString()}</p>
                       )}
                     </div>
-                    <button onClick={() => iniciarConfiguracion(prod)} style={{ width: '100%', padding: '12px', background: restauranteConfig?.colorPrincipal || '#34495e', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px' }}>Agregar</button>
+                    <button onClick={() => iniciarConfiguracion(prod)} style={{ 
+    width: '100%', 
+    padding: '12px', 
+    background: config?.colorPrimario || '#4f46e5', 
+    color: obtenerColorTextoContraste(config?.colorPrimario || '#4f46e5'), 
+    border: 'none', 
+    borderRadius: '12px', 
+    fontWeight: '800', 
+    fontSize: '15px', 
+    cursor: 'pointer',
+    transition: '0.3s'
+  }}>Agregar</button>
                   </div>
                 ))}
               </div>
