@@ -165,7 +165,7 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
   const [facturaNombre, setFacturaNombre] = useState('');
 
   const menuActivo = menu.filter(p => p.estado === 'activo');
-  const categoriasUnicas = ['Todas', ...new Set(menuActivo.map(p => p.categoria || 'General'))];
+  const Unicas = ['Todas', ...new Set(menuActivo.map(p => p.categoria || 'General'))];
   const menuFiltrado = filtroCategoriaCli === 'Todas' ? menuActivo : menuActivo.filter(p => (p.categoria || 'General') === filtroCategoriaCli);
 
   useEffect(() => {
@@ -403,7 +403,7 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
               )}
               
               <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '15px', marginBottom: '15px' }}>
-                {categoriasUnicas.map(cat => (
+                {Unicas.map(cat => (
                   <button key={cat} onClick={() => setFiltroCategoriaCli(cat)} style={{ padding: '8px 15px', background: filtroCategoriaCli === cat ? (restauranteConfig?.colorPrincipal || '#2c3e50') : '#ecf0f1', color: filtroCategoriaCli === cat ? 'white' : '#2c3e50', border: 'none', borderRadius: '20px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                     {cat}
                   </button>
@@ -421,10 +421,57 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
                       </div>
                     )}
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <h3 style={{ margin: '0 0 8px 0', color: '#2c3e50', fontSize: '18px' }}>{prod.nombre}</h3>
-                        <span style={{ fontSize: '10px', background: '#eee', padding: '3px 6px', borderRadius: '3px', color: '#777' }}>{prod.categoria || 'General'}</span>
+                      {/* LISTA DE PRODUCTOS - SOFT UI CARD DESIGN */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '100px' }}>
+                {menuFiltrado.map(prod => (
+                  <div key={prod.id} style={{ 
+                    background: 'white', 
+                    padding: '16px', 
+                    borderRadius: '24px', 
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.03)', 
+                    border: '1px solid rgba(0,0,0,0.01)',
+                    display: 'flex', 
+                    alignItems: 'center',
+                    gap: '16px'
+                  }}>
+                    {prod.imagenUrl ? (
+                      <img src={prod.imagenUrl} alt={prod.nombre} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} style={{ width: '85px', height: '80px', objectFit: 'cover', borderRadius: '16px', background: '#eee', flexShrink: 0 }} />
+                    ) : (
+                      <div style={{ width: '85px', height: '80px', backgroundColor: '#f4f6f8', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bdc3c7', fontSize: '24px', fontWeight: 'bold', flexShrink: 0 }}>
+                        {prod.nombre.charAt(0).toUpperCase()}
                       </div>
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{ margin: '0 0 6px 0', color: '#111827', fontSize: '16px', fontWeight: '800', lineHeight: '1.2' }}>{prod.nombre}</h3>
+                      {prod.precio_promo > 0 ? (
+                        <p style={{ fontSize: '15px', fontWeight: '800', color: '#e74c3c', margin: 0 }}>
+                          <span style={{ textDecoration: 'line-through', color: '#95a5a6', fontSize: '12px', marginRight: '6px' }}>Gs. {(prod.precio_base || 0).toLocaleString()}</span>
+                          Gs. {prod.precio_promo.toLocaleString()}
+                        </p>
+                      ) : (
+                        <p style={{ fontSize: '15px', fontWeight: '800', color: restauranteConfig?.colorPrincipal || '#27ae60', margin: 0 }}>Gs. {(prod.precio_base || 0).toLocaleString()}</p>
+                      )}
+                    </div>
+                    <button 
+                      onClick={() => iniciarConfiguracion(prod)} 
+                      style={{ 
+                        background: 'rgba(79, 70, 229, 0.06)', 
+                        color: restauranteConfig?.colorPrincipal || '#4f46e5', 
+                        border: 'none', 
+                        borderRadius: '14px', 
+                        width: '42px', 
+                        height: '42px', 
+                        fontSize: '22px', 
+                        fontWeight: '800', 
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>+</button>
+                  </div>
+                ))}
+              </div>
                       {prod.precio_promo > 0 ? (
                         <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#e74c3c', margin: '0 0 15px 0' }}>
                           <span style={{ textDecoration: 'line-through', color: '#95a5a6', fontSize: '13px', marginRight: '6px' }}>Gs. {(prod.precio_base || 0).toLocaleString()}</span>
@@ -608,7 +655,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
   const [precioBase, setPrecioBase] = useState('');
   const [precioPromo, setPrecioPromo] = useState(''); 
   const [imagenUrl, setImagenUrl] = useState(''); 
-  const [categoriaSelect, setCategoriaSelect] = useState('Plato Principal'); 
+  const [elect, setelect] = useState('Plato Principal'); 
   const [toppingNombre, setToppingNombre] = useState('');
   const [toppingPrecio, setToppingPrecio] = useState('');
   const [toppingsLista, setToppingsLista] = useState([]); 
@@ -922,7 +969,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
 
   const iniciarEdicion = (prod) => {
     setIdEditando(prod.id); setNombre(prod.nombre); setPrecioBase(prod.precio_base); setPrecioPromo(prod.precio_promo || '');
-    setCategoriaSelect(prod.categoria || 'Plato Principal'); setImagenUrl(prod.imagenUrl || ''); setToppingsLista(prod.toppings || []);
+    setelect(prod.categoria || 'Plato Principal'); setImagenUrl(prod.imagenUrl || ''); setToppingsLista(prod.toppings || []);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const cancelarEdicion = () => {
@@ -934,7 +981,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
     if (!nombre.trim() || !precioBase) return alert("Nombre y Precio Base son obligatorios.");
     const payload = { 
       nombre: nombre.trim(), precio_base: parseInt(precioBase), precio_promo: precioPromo ? parseInt(precioPromo) : null,
-      categoria: categoriaSelect, imagenUrl: imagenUrl.trim(), toppings: toppingsLista 
+      categoria: elect, imagenUrl: imagenUrl.trim(), toppings: toppingsLista 
     };
 
     if (idEditando) {
