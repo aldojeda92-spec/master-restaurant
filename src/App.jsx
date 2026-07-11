@@ -17,7 +17,16 @@ const getTenantId = () => {
 };
 
 const tenantId = getTenantId();
-
+// HELPER: Calcula si el texto debe ser blanco o negro según el fondo
+const obtenerColorTextoContraste = (hexColor) => {
+  if (!hexColor) return '#ffffff';
+  const hex = hexColor.replace('#', '');
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  return (yiq >= 128) ? '#111827' : '#ffffff'; // #111827 es un negro suave elegante
+};
 export default function App() {
   const [vistaActual, setVistaActual] = useState('cliente'); 
   const [productos, setProductos] = useState([]);
