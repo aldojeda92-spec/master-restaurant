@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from './firebase';
-import { collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, getDocs, limit } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, getDocs, limit, collectionGroup } from 'firebase/firestore';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // ==========================================
@@ -30,9 +30,15 @@ const obtenerColorTextoContraste = (hexColor) => {
 };
 
 // ==========================================
-// APP PRINCIPAL
+// APP PRINCIPAL (CON GUARDIA DE TRÁFICO)
 // ==========================================
 export default function App() {
+  // INTERCEPTOR DE RUTA PARA EL SÚPER ADMIN
+  const rutaActual = window.location.pathname;
+  if (rutaActual === '/panel-admin') {
+    return <SuperAdminDashboard />;
+  }
+
   const [vistaActual, setVistaActual] = useState('cliente'); 
   const [productos, setProductos] = useState([]);
   const [config, setConfig] = useState({
@@ -46,7 +52,7 @@ export default function App() {
     titular: '',
     ruc: '',
     telefono: '',
-    // VARIABLES SAAS (PUNTO A Y B)
+    // VARIABLES SAAS GLOBALES
     moneda: 'Gs.',
     estadoSuscripcion: 'demo',
     fechaFinDemo: new Date(Date.now() + 90*24*60*60*1000).toISOString().split('T')[0]
@@ -78,20 +84,25 @@ export default function App() {
     return () => unsubscribeConfig();
   }, []);
 
-  // LÓGICA SAAS: CONTROL DE PERÍODO DE PRUEBA (GATEKEEPER)
+  // LÓGICA DE CONTROL DE PERÍODO DE PRUEBA (PAYWALL GATEKEEPER)
   const hoyStr = new Date().toISOString().split('T')[0];
   const demoExpirada = config.estadoSuscripcion === 'demo' && hoyStr > (config.fechaFinDemo || '2026-01-01');
   const cuentaSuspendida = config.estadoSuscripcion === 'suspendido';
   const requierePago = demoExpirada || cuentaSuspendida;
 
-  // MURO CLIENTE: SI LA DEMO EXPIRO, OCULTAMOS EL MENÚ
+  // REGLA UX: SI LA DEMO EXPIRO, PINTAMOS EL CORDÓN DE SEGURIDAD PARA COMENSALES
   if (requierePago && vistaActual === 'cliente') {
     return (
       <div style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', background: '#f8f9fa', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
         <div style={{ background: 'white', padding: '40px', borderRadius: '30px', boxShadow: '0 20px 50px rgba(0,0,0,0.04)', maxWidth: '450px', border: '1px solid #f3f4f6' }}>
           <span style={{ fontSize: '50px' }}>⚙️</span>
           <h2 style={{ color: '#111827', fontWeight: '900', marginTop: '15px' }}>Menú en Mantenimiento</h2>
-          <p style={{ color: '#6b7280', fontSize: '15px', lineHeight: '1.6', fontWeight: '500' }}>Estamos optimizando nuestra plataforma digital para brindarte un mejor servicio. Por favor, solicita la carta física o asistencia al personal del local.</p>
+          <p style={{ color: '#6b7280', fontSize: '15px', lineHeight: '1.6', fontWeight: '500', marginBottom: '30px' }}>Estamos optimizando nuestra plataforma digital para brindarte un mejor servicio. Por favor, solicita la carta física o asistencia al personal del local.</p>
+          
+          {/* BOTÓN DE RESCATE (PUERTA TRASERA PARA STAFF / ALDO) */}
+          <button onClick={() => setVistaActual('admin')} style={{ background: 'none', border: 'none', color: '#9ca3af', fontWeight: '700', fontSize: '14px', cursor: 'pointer', borderTop: '1px solid #f3f4f6', paddingTop: '20px', width: '100%' }}>
+            Ingreso Staff / Operador SaaS
+          </button>
         </div>
       </div>
     );
@@ -191,7 +202,7 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
   const [facturaRuc, setFacturaRuc] = useState('');
   const [facturaNombre, setFacturaNombre] = useState('');
 
-  // VARIABLE MULTIMONEDA
+  // MULTIMONEDA APLICADA AL CLIENTE
   const divisa = restauranteConfig?.moneda || 'Gs.';
 
   const menuActivo = menu.filter(p => p.estado === 'activo');
@@ -396,7 +407,6 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
                 </div>
               )}
 
-              {/* CORRECCIÓN APLICADA: ELIMINACIÓN DEL TYPO "{cant=cantidadTemp}" */}
               <div style={{ marginBottom: '30px', textAlign: 'center', background: '#f9fafb', padding: '20px', borderRadius: '16px' }}>
                 <strong style={{ display: 'block', marginBottom: '15px', color: '#374151', fontSize: '14px' }}>Cantidad de platos iguales:</strong>
                 <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', alignItems: 'center' }}>
@@ -440,7 +450,7 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
                 ))}
               </div>
 
-              {/* LISTA DE PRODUCTOS (SOFT UI) */}
+              {/* LISTA DE PRODUCTOS */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', paddingBottom: '80px' }}>
                 {menuFiltrado.map(prod => (
                   <div key={prod.id} style={{ background: 'white', padding: '16px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -464,7 +474,6 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
                         <p style={{ fontSize: '18px', fontWeight: '900', color: restauranteConfig?.colorPrincipal || '#10b981', margin: '0 0 15px 0' }}>{divisa} {(prod.precio_base || 0).toLocaleString()}</p>
                       )}
                     </div>
-                    {/* BOTÓN AGREGAR CON CONTRASTE DINÁMICO */}
                     <button onClick={() => iniciarConfiguracion(prod)} style={{ width: '100%', padding: '14px', background: restauranteConfig?.colorPrincipal || '#34495e', color: obtenerColorTextoContraste(restauranteConfig?.colorPrincipal), border: 'none', borderRadius: '14px', cursor: 'pointer', fontWeight: '800', fontSize: '15px', transition: '0.3s' }}>Agregar al pedido</button>
                   </div>
                 ))}
@@ -607,7 +616,6 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
           )}
         </div>
       )}
-      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </div>
   );
 }
@@ -662,11 +670,8 @@ function VistaAdmin({ inventario, restauranteConfig, paywallBloqueado }) {
   const [inputRuc, setInputRuc] = useState(restauranteConfig?.ruc || '');
   const [inputTelefono, setInputTelefono] = useState(restauranteConfig?.telefono || '');
   
-  // VARIABLES SAAS (PUNTO A Y B)
+  // VARIABLES SAAS CLIENTE
   const [inputMoneda, setInputMoneda] = useState(restauranteConfig?.moneda || 'Gs.');
-  const [saasStatus, setSaasStatus] = useState(restauranteConfig?.estadoSuscripcion || 'demo');
-  const [saasFechaDemo, setSaasFechaDemo] = useState(restauranteConfig?.fechaFinDemo || new Date().toISOString().split('T')[0]);
-
   const divisa = restauranteConfig?.moneda || 'Gs.';
 
   // CONTROL DE SESIÓN Y OBTENCIÓN DE PERMISOS
@@ -736,8 +741,6 @@ function VistaAdmin({ inventario, restauranteConfig, paywallBloqueado }) {
       setInputRuc(restauranteConfig.ruc || '');
       setInputTelefono(restauranteConfig.telefono || '');
       setInputMoneda(restauranteConfig.moneda || 'Gs.');
-      setSaasStatus(restauranteConfig.estadoSuscripcion || 'demo');
-      setSaasFechaDemo(restauranteConfig.fechaFinDemo || new Date().toISOString().split('T')[0]);
     }
   }, [restauranteConfig]);
 
@@ -1025,16 +1028,6 @@ function VistaAdmin({ inventario, restauranteConfig, paywallBloqueado }) {
     alert("Variables de tienda guardadas.");
   };
 
-  // CONTROL MAESTRO DE FACTURACIÓN (EXCLUSIVO PARA ALDO)
-  const guardarControlMaestroSaaS = async (e) => {
-    e.preventDefault();
-    await updateDoc(doc(db, `restaurantes/${tenantId}/configuracion`, "datos"), { 
-      estadoSuscripcion: saasStatus,
-      fechaFinDemo: saasFechaDemo
-    });
-    alert("¡Estado de Suscripción SaaS Actualizado de forma central!");
-  };
-
   // RENDER PANTALLA LOGIN STAFF (SOFT UI)
   if (!user) {
     return (
@@ -1056,7 +1049,7 @@ function VistaAdmin({ inventario, restauranteConfig, paywallBloqueado }) {
     );
   }
 
-  // REGLA SAAS: SI EL NEGOCIO EXPIRÓ, EL STAFF CAE EN EL RECLAMO COMERCIAL (SALVO TU CORREO BACKDOOR)
+  // REGLA SAAS: SI EL NEGOCIO EXPIRÓ, EL STAFF CAE EN EL MURO DE PAGOS (SALVO TU CORREO MAESTRO)
   const esPropietarioSaaS = user?.email === 'aldojeda92@gmail.com';
   if (paywallBloqueado && !esPropietarioSaaS) {
     return (
@@ -1175,11 +1168,6 @@ function VistaAdmin({ inventario, restauranteConfig, paywallBloqueado }) {
           {permisos?.reportes && <button onClick={() => setSubModulo('reportes')} style={{ padding: '12px 18px', background: subModulo === 'reportes' ? '#8b5cf6' : '#f3f4f6', color: subModulo === 'reportes' ? 'white' : '#4b5563', border: 'none', cursor: 'pointer', fontWeight: '800', borderRadius: '12px', transition: '0.3s' }}>📊 REPORTES</button>}
           {permisos?.sistema && <button onClick={() => setSubModulo('config')} style={{ padding: '12px 18px', background: subModulo === 'config' ? '#f59e0b' : '#f3f4f6', color: subModulo === 'config' ? 'white' : '#4b5563', border: 'none', cursor: 'pointer', fontWeight: '800', borderRadius: '12px', transition: '0.3s' }}>🏢 Sistema</button>}
           {permisos?.admin && <button onClick={() => setSubModulo('staff')} style={{ padding: '12px 18px', background: subModulo === 'staff' ? '#111827' : '#f3f4f6', color: subModulo === 'staff' ? 'white' : '#111827', border: 'none', cursor: 'pointer', fontWeight: '800', borderRadius: '12px', transition: '0.3s' }}>👥 STAFF / ROLES</button>}
-          
-          {/* BACKDOOR EXCLUSIVO DE ALDO DETECTADO PROGRAMÁTICAMENTE */}
-          {esPropietarioSaaS && (
-            <button onClick={() => setSubModulo('master_saas')} style={{ padding: '12px 18px', background: subModulo === 'master_saas' ? '#6d28d9' : '#fee2e2', color: subModulo === 'master_saas' ? 'white' : '#b91c1c', border: 'none', cursor: 'pointer', fontWeight: '900', borderRadius: '12px' }}>👑 MASTER SaaS</button>
-          )}
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -1187,32 +1175,6 @@ function VistaAdmin({ inventario, restauranteConfig, paywallBloqueado }) {
           <button onClick={() => signOut(auth)} style={{ padding: '10px 16px', background: 'transparent', color: '#ef4444', border: '2px solid #fee2e2', borderRadius: '12px', cursor: 'pointer', fontWeight: '800', transition: '0.3s' }}>Salir</button>
         </div>
       </div>
-
-      {/* RENDERIZADO BACKDOOR CONTROL PANEL CENTRAL (PUNTO A) */}
-      {subModulo === 'master_saas' && esPropietarioSaaS && (
-        <div style={{ maxWidth: '600px', background: 'white', padding: '30px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '2px solid #8b5cf6' }}>
-          <h3 style={{ marginTop: 0, color: '#6d28d9', fontWeight: '900' }}>Panel del Operador Maestro (Pasta SaaS)</h3>
-          <p style={{ color: '#6b7280', fontSize: '14px' }}>Control de licenciamiento y gating comercial para el tenant actual: <strong>{tenantId}</strong></p>
-          
-          <form onSubmit={guardarControlMaestroSaaS} style={{ marginTop: '20px' }}>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontWeight: '700', marginBottom: '8px' }}>Estado de Suscripción comercial:</label>
-              <select value={saasStatus} onChange={e => setSaasStatus(e.target.value)} style={{ width: '100%', padding: '15px', borderRadius: '12px', background: '#f3f4f6', border: 'none', fontWeight: '600' }}>
-                <option value="demo">Período Demo Activo</option>
-                <option value="activo">Cuenta Comercial Activa (Plan Pago)</option>
-                <option value="suspendido">Cuenta Suspendida / Bloqueo Total</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: '25px' }}>
-              <label style={{ display: 'block', fontWeight: '700', marginBottom: '8px' }}>Fecha de finalización de Demo / Licencia:</label>
-              <input type="date" value={saasFechaDemo} onChange={e => setSaasFechaDemo(e.target.value)} style={{ width: '100%', padding: '15px', borderRadius: '12px', background: '#f3f4f6', border: 'none', fontWeight: '600' }} />
-            </div>
-
-            <button type="submit" style={{ width: '100%', padding: '18px', background: '#6d28d9', color: 'white', border: 'none', borderRadius: '16px', fontWeight: '800', cursor: 'pointer' }}>Aplicar Cambios Globales</button>
-          </form>
-        </div>
-      )}
 
       {/* RENDERIZADO: STAFF Y PERMISOS */}
       {subModulo === 'staff' && permisos?.admin && (
@@ -1707,6 +1669,204 @@ function VistaAdmin({ inventario, restauranteConfig, paywallBloqueado }) {
           </form>
         </div>
       )}
+    </div>
+  );
+}
+
+// ==========================================
+// COMPONENTE NUEVO: PANEL SUPER ADMIN SAAS
+// ==========================================
+function SuperAdminDashboard() {
+  const [user, setUser] = useState(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [restaurantesBD, setRestaurantesBD] = useState([]);
+  const [cargando, setCargando] = useState(true);
+
+  // Estados temporales de edición rápida
+  const [editandoTenant, setEditandoTenant] = useState(null);
+  const [tempEstado, setTempEstado] = useState('');
+  const [tempFecha, setTempFecha] = useState('');
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser && currentUser.email === 'aldojeda92@gmail.com') {
+        cargarTodosLosRestaurantes();
+      } else {
+        setCargando(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const cargarTodosLosRestaurantes = async () => {
+    setCargando(true);
+    try {
+      // Escanea absolutamente todas las configuraciones en Firebase
+      const querySnapshot = await getDocs(collectionGroup(db, 'configuracion'));
+      const lista = [];
+      querySnapshot.forEach((docSnap) => {
+        if (docSnap.id === 'datos') {
+          const idInquilino = docSnap.ref.parent.parent.id;
+          lista.push({ id_tenant: idInquilino, ...docSnap.data() });
+        }
+      });
+      setRestaurantesBD(lista);
+    } catch (error) {
+      console.error("Error cargando panel maestro:", error);
+      alert("Error al cargar la base de datos. Verifica reglas de Firebase.");
+    }
+    setCargando(false);
+  };
+
+  const ejecutarLoginAdmin = async (e) => {
+    e.preventDefault();
+    try { 
+      await signInWithEmailAndPassword(auth, email, password); 
+    } catch (error) { 
+      alert("Credenciales incorrectas."); 
+    }
+  };
+
+  const iniciarEdicionRapida = (rest) => {
+    setEditandoTenant(rest.id_tenant);
+    setTempEstado(rest.estadoSuscripcion || 'demo');
+    setTempFecha(rest.fechaFinDemo || new Date().toISOString().split('T')[0]);
+  };
+
+  const guardarEdicionRapida = async (id_tenant) => {
+    try {
+      await updateDoc(doc(db, `restaurantes/${id_tenant}/configuracion`, 'datos'), {
+        estadoSuscripcion: tempEstado,
+        fechaFinDemo: tempFecha
+      });
+      alert(`✅ Licencia de ${id_tenant} actualizada.`);
+      setEditandoTenant(null);
+      cargarTodosLosRestaurantes(); // Refrescar lista
+    } catch (error) {
+      alert("Error al guardar: " + error.message);
+    }
+  };
+
+  if (cargando) return <div style={{ padding: '50px', textAlign: 'center', fontFamily: 'sans-serif' }}>Conectando a la central...</div>;
+
+  if (!user) {
+    return (
+      <div style={{ fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif', background: '#111827', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#1f2937', padding: '40px 30px', borderRadius: '24px', width: '100%', maxWidth: '400px', textAlign: 'center', border: '1px solid #374151' }}>
+          <span style={{ fontSize: '40px' }}>👑</span>
+          <h2 style={{ color: 'white', fontWeight: '900', marginTop: '10px' }}>Master Resto SaaS</h2>
+          <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '30px' }}>Solo personal autorizado.</p>
+          
+          <form onSubmit={ejecutarLoginAdmin}>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email Operador" style={{ width: '100%', padding: '16px', marginBottom: '15px', borderRadius: '12px', background: '#374151', border: 'none', color: 'white', textAlign: 'center', outline: 'none' }} required />
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Contraseña Maestra" style={{ width: '100%', padding: '16px', marginBottom: '25px', borderRadius: '12px', background: '#374151', border: 'none', color: 'white', textAlign: 'center', outline: 'none' }} required />
+            <button type="submit" style={{ width: '100%', padding: '18px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: '12px', fontWeight: '900', cursor: 'pointer', transition: '0.3s' }}>Acceder a la Central</button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // SI SE LOGUEA ALGUIEN QUE NO SOS VOS, REBOTA.
+  if (user.email !== 'aldojeda92@gmail.com') {
+    return (
+      <div style={{ padding: '50px', textAlign: 'center', fontFamily: 'sans-serif' }}>
+        <h2 style={{ color: '#ef4444' }}>Acceso Denegado</h2>
+        <p>Tu cuenta ({user.email}) no tiene privilegios de Operador SaaS.</p>
+        <button onClick={() => signOut(auth)} style={{ padding: '10px 20px', background: '#111827', color: 'white', borderRadius: '8px' }}>Cerrar Sesión</button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif', backgroundColor: '#f3f4f6', minHeight: '100vh', padding: '20px' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        
+        {/* CABECERA SUPER ADMIN */}
+        <div style={{ background: '#111827', color: 'white', padding: '30px', borderRadius: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+          <div>
+            <h1 style={{ margin: '0 0 10px 0', fontSize: '28px', fontWeight: '900', color: '#c4b5fd' }}>👑 Cuartel General SaaS</h1>
+            <span style={{ fontSize: '14px', color: '#9ca3af' }}>Control global de infraestructura y licencias de Master Resto.</span>
+          </div>
+          <button onClick={() => signOut(auth)} style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}>Salir de Central</button>
+        </div>
+
+        {/* TABLA DE INQUILINOS */}
+        <div style={{ background: 'white', padding: '30px', borderRadius: '24px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #f3f4f6', paddingBottom: '20px', marginBottom: '20px' }}>
+            <h2 style={{ margin: 0, color: '#111827', fontWeight: '900' }}>Inquilinos Activos ({restaurantesBD.length})</h2>
+            <button onClick={cargarTodosLosRestaurantes} style={{ padding: '10px 16px', background: '#f3f4f6', color: '#4b5563', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>🔄 Refrescar Red</button>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ color: '#6b7280', fontSize: '13px', textTransform: 'uppercase', borderBottom: '1px solid #e5e7eb' }}>
+                  <th style={{ padding: '15px' }}>Tenant ID (Subdominio)</th>
+                  <th style={{ padding: '15px' }}>Nombre Comercial</th>
+                  <th style={{ padding: '15px' }}>Divisa</th>
+                  <th style={{ padding: '15px' }}>Estado SaaS</th>
+                  <th style={{ padding: '15px' }}>Fin de Licencia</th>
+                  <th style={{ padding: '15px', textAlign: 'right' }}>Acción Remota</th>
+                </tr>
+              </thead>
+              <tbody>
+                {restaurantesBD.map((rest, idx) => {
+                  const esEditando = editandoTenant === rest.id_tenant;
+                  const estadoColor = rest.estadoSuscripcion === 'activo' ? '#10b981' : rest.estadoSuscripcion === 'suspendido' ? '#ef4444' : '#f59e0b';
+                  
+                  return (
+                    <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6', transition: '0.2s' }}>
+                      <td style={{ padding: '15px', fontWeight: '700', color: '#4f46e5' }}>{rest.id_tenant}</td>
+                      <td style={{ padding: '15px', fontWeight: '700', color: '#111827' }}>{rest.nombre || 'Sin configurar'}</td>
+                      <td style={{ padding: '15px', fontWeight: '600', color: '#6b7280' }}>{rest.moneda || 'Gs.'}</td>
+                      
+                      <td style={{ padding: '15px' }}>
+                        {esEditando ? (
+                          <select value={tempEstado} onChange={e => setTempEstado(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }}>
+                            <option value="demo">Demo</option>
+                            <option value="activo">Activo</option>
+                            <option value="suspendido">Suspendido</option>
+                          </select>
+                        ) : (
+                          <span style={{ background: `${estadoColor}20`, color: estadoColor, padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase' }}>
+                            {rest.estadoSuscripcion || 'Desconocido'}
+                          </span>
+                        )}
+                      </td>
+
+                      <td style={{ padding: '15px' }}>
+                        {esEditando ? (
+                          <input type="date" value={tempFecha} onChange={e => setTempFecha(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }} />
+                        ) : (
+                          <span style={{ fontWeight: '600', color: '#4b5563' }}>{rest.fechaFinDemo || 'Sin Límite'}</span>
+                        )}
+                      </td>
+
+                      <td style={{ padding: '15px', textAlign: 'right' }}>
+                        {esEditando ? (
+                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                            <button onClick={() => guardarEdicionRapida(rest.id_tenant)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Guardar</button>
+                            <button onClick={() => setEditandoTenant(null)} style={{ background: '#f3f4f6', color: '#4b5563', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>X</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => iniciarEdicionRapida(rest)} style={{ background: 'transparent', color: '#8b5cf6', border: '1px solid #8b5cf6', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', transition: '0.2s' }}>Editar Licencia</button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {restaurantesBD.length === 0 && (
+                  <tr><td colSpan="6" style={{ padding: '30px', textAlign: 'center', color: '#6b7280' }}>No hay restaurantes registrados en Firebase.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }
