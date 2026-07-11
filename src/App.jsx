@@ -17,17 +17,7 @@ const getTenantId = () => {
 };
 
 const tenantId = getTenantId();
-// HELPER: Calcula si el texto debe ser blanco o negro según el fondo
-const obtenerColorTextoContraste = (hexColor) => {
-  // Si el inquilino no tiene color, usamos el Indigo por defecto
-  const colorBase = hexColor || '#4f46e5'; 
-  const hex = colorBase.replace('#', '');
-  const r = parseInt(hex.substr(0, 2), 16);
-  const g = parseInt(hex.substr(2, 2), 16);
-  const b = parseInt(hex.substr(4, 2), 16);
-  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-  return (yiq >= 128) ? '#111827' : '#ffffff'; 
-};
+
 export default function App() {
   const [vistaActual, setVistaActual] = useState('cliente'); 
   const [productos, setProductos] = useState([]);
@@ -77,7 +67,7 @@ export default function App() {
       <div style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', background: 'radial-gradient(circle at top center, #ffffff 0%, #f3f4f6 100%)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
         <div style={{ background: 'white', padding: '40px 30px', borderRadius: '30px', boxShadow: '0 20px 50px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.03)', maxWidth: '400px', width: '100%', textAlign: 'center' }}>
           
-          {restauranteConfig?.logoUrl ? (
+          {config?.logoUrl ? (
             <div style={{ background: '#f8f9fa', width: '120px', height: '120px', borderRadius: '50%', margin: '0 auto 25px auto', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
               <img src={config.logoUrl} alt="Logo" style={{ maxWidth: '80%', maxHeight: '80%', objectFit: 'contain' }} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} />
             </div>
@@ -85,7 +75,7 @@ export default function App() {
             <div style={{ background: 'rgba(79, 70, 229, 0.1)', width: '80px', height: '80px', borderRadius: '24px', margin: '0 auto 25px auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px' }}>🍽️</div>
           )}
 
-          <h2 style={{ color: '#111827', marginTop: 0, fontSize: '28px', fontWeight: '800', letterSpacing: '-1px' }}>{restauranteConfig?.nombre}</h2>
+          <h2 style={{ color: '#111827', marginTop: 0, fontSize: '28px', fontWeight: '800', letterSpacing: '-1px' }}>{config?.nombre}</h2>
           
           {mesaAsignada ? (
             <div style={{ background: 'rgba(79, 70, 229, 0.05)', color: '#4f46e5', padding: '10px 20px', borderRadius: '20px', display: 'inline-block', fontWeight: '800', marginBottom: '30px', fontSize: '14px' }}>
@@ -100,10 +90,7 @@ export default function App() {
           <p style={{ marginBottom: '15px', fontWeight: '600', color: '#6b7280', fontSize: '15px' }}>¿A nombre de quién hacemos el pedido?</p>
           <input type="text" value={inputNombreTemp} onChange={e => setInputNombreTemp(e.target.value)} placeholder="Tu nombre o apodo" style={{ width: '100%', padding: '18px', marginBottom: '25px', boxSizing: 'border-box', borderRadius: '16px', border: '2px solid transparent', background: '#f3f4f6', fontSize: '16px', fontWeight: '600', textAlign: 'center', color: '#111827', outline: 'none', transition: '0.3s' }} onFocus={(e) => {e.target.style.borderColor = '#4f46e5'; e.target.style.background = 'white';}} onBlur={(e) => {e.target.style.borderColor = 'transparent'; e.target.style.background = '#f3f4f6';}} />
           
-          {/* BOTÓN CON CONTRASTE DINÁMICO */}
-          <button onClick={() => { if (inputNombreTemp.trim() && mesaAsignada) setNombreComensal(inputNombreTemp.trim()); else alert("Completá tu nombre y mesa."); }} 
-            style={{ width: '100%', padding: '18px', background: restauranteConfig?.colorPrimario || '#4f46e5', color: obtenerColorTextoContraste(restauranteConfig?.colorPrimario || '#4f46e5'), border: 'none', borderRadius: '16px', fontWeight: '800', fontSize: '16px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(79, 70, 229, 0.25)', transition: '0.3s' }} 
-            onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'} onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}>
+          <button onClick={() => { if (inputNombreTemp.trim() && mesaAsignada) setNombreComensal(inputNombreTemp.trim()); else alert("Completá tu nombre y mesa."); }} style={{ width: '100%', padding: '18px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '16px', fontWeight: '800', fontSize: '16px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(79, 70, 229, 0.25)', transition: '0.3s' }} onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'} onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}>
             Ver el Menú
           </button>
           
@@ -111,18 +98,18 @@ export default function App() {
         </div>
       </div>
     );
-}
+  }
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <nav style={{ background: restauranteConfig?.colorPrincipal || '#2c3e50', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white', boxShadow: '0 2px 5px rgba(0,0,0,0.2)', flexWrap: 'wrap', gap: '10px' }}>
+      <nav style={{ background: config?.colorPrincipal || '#2c3e50', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white', boxShadow: '0 2px 5px rgba(0,0,0,0.2)', flexWrap: 'wrap', gap: '10px' }}>
         <h2 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {restauranteConfig?.logoUrl ? <img src={config.logoUrl} alt="Logo" style={{ height: '50px', borderRadius: '4px', objectFit: 'contain', background: 'white', padding: '2px' }} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} /> : '🇮🇹'}
-          {restauranteConfig?.nombre} {mesaAsignada && `| Mesa ${mesaAsignada}`}
+          {config?.logoUrl ? <img src={config.logoUrl} alt="Logo" style={{ height: '50px', borderRadius: '4px', objectFit: 'contain', background: 'white', padding: '2px' }} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} /> : '🇮🇹'}
+          {config?.nombre} {mesaAsignada && `| Mesa ${mesaAsignada}`}
         </h2>
         <div style={{ display: 'flex', gap: '5px' }}>
-          <button onClick={() => setVistaActual('cliente')} style={{ padding: '8px 12px', cursor: 'pointer', background: vistaActual === 'cliente' ? (restauranteConfig?.colorSecundario || '#3498db') : 'rgba(255,255,255,0.2)', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', fontSize: '12px' }}>Vista Menú</button>
-          <button onClick={() => setVistaActual('admin')} style={{ padding: '8px 12px', cursor: 'pointer', background: vistaActual === 'admin' ? (restauranteConfig?.colorSecundario || '#e67e22') : 'rgba(255,255,255,0.2)', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', fontSize: '12px' }}>Panel Staff</button>
+          <button onClick={() => setVistaActual('cliente')} style={{ padding: '8px 12px', cursor: 'pointer', background: vistaActual === 'cliente' ? (config?.colorSecundario || '#3498db') : 'rgba(255,255,255,0.2)', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', fontSize: '12px' }}>Vista Menú</button>
+          <button onClick={() => setVistaActual('admin')} style={{ padding: '8px 12px', cursor: 'pointer', background: vistaActual === 'admin' ? (config?.colorSecundario || '#e67e22') : 'rgba(255,255,255,0.2)', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', fontSize: '12px' }}>Panel Staff</button>
         </div>
       </nav>
 
@@ -134,9 +121,9 @@ export default function App() {
         )}
       </div>
 
-      <footer style={{ background: restauranteConfig?.colorPrincipal || '#2c3e50', color: '#bdc3c7', padding: '15px', marginTop: 'auto', borderTop: `3px solid ${restauranteConfig?.colorSecundario || '#e67e22'}`, fontSize: '12px', textAlign: 'center' }}>
+      <footer style={{ background: config?.colorPrincipal || '#2c3e50', color: '#bdc3c7', padding: '15px', marginTop: 'auto', borderTop: `3px solid ${config?.colorSecundario || '#e67e22'}`, fontSize: '12px', textAlign: 'center' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <strong>{restauranteConfig?.nombre}</strong> — {restauranteConfig?.direccion || 'No configurada'}
+          <strong>{config?.nombre}</strong> — {config?.direccion || 'No configurada'}
           <br />
           <span style={{ fontSize: '10px', color: '#7f8c8d' }}>Powered by Pasta B2B Platform © 2026</span>
         </div>
@@ -169,7 +156,7 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
   const [facturaNombre, setFacturaNombre] = useState('');
 
   const menuActivo = menu.filter(p => p.estado === 'activo');
-  const Unicas = ['Todas', ...new Set(menuActivo.map(p => p.categoria || 'General'))];
+  const categoriasUnicas = ['Todas', ...new Set(menuActivo.map(p => p.categoria || 'General'))];
   const menuFiltrado = filtroCategoriaCli === 'Todas' ? menuActivo : menuActivo.filter(p => (p.categoria || 'General') === filtroCategoriaCli);
 
   useEffect(() => {
@@ -324,7 +311,7 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
       </div>
 
       <div style={{ display: 'flex', marginBottom: '20px', background: 'white', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-        <button onClick={() => {setTabMovil('pedir'); setIniciandoPago(false);}} style={{ flex: 1, padding: '15px', border: 'none', background: tabMovil === 'pedir' ? (restauranterestauranteConfig?.colorSecundario || '#3498db') : 'transparent', color: tabMovil === 'pedir' ? 'white' : '#7f8c8d', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>
+        <button onClick={() => {setTabMovil('pedir'); setIniciandoPago(false);}} style={{ flex: 1, padding: '15px', border: 'none', background: tabMovil === 'pedir' ? (restauranteConfig?.colorSecundario || '#3498db') : 'transparent', color: tabMovil === 'pedir' ? 'white' : '#7f8c8d', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>
           🍝 Menú & Pedidos
         </button>
         <button onClick={() => setTabMovil('cuenta')} style={{ flex: 1, padding: '15px', border: 'none', background: tabMovil === 'cuenta' ? '#27ae60' : 'transparent', color: tabMovil === 'cuenta' ? 'white' : '#7f8c8d', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>
@@ -335,12 +322,12 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
       {tabMovil === 'pedir' ? (
         <div>
           {productoConfigurando ? (
-            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: `3px solid ${restauranterestauranteConfig?.colorSecundario || '#3498db'}`, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: `3px solid ${restauranteConfig?.colorSecundario || '#3498db'}`, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
               {productoConfigurando.imagenUrl && (
                 <img src={productoConfigurando.imagenUrl} alt={productoConfigurando.nombre} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '6px', marginBottom: '15px' }} />
               )}
               
-              <span style={{ display: 'inline-block', background: restauranterestauranteConfig?.colorSecundario || '#3498db', color: 'white', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', marginBottom: '10px' }}>{productoConfigurando.categoria || 'General'}</span>
+              <span style={{ display: 'inline-block', background: restauranteConfig?.colorSecundario || '#3498db', color: 'white', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', marginBottom: '10px' }}>{productoConfigurando.categoria || 'General'}</span>
               <h3 style={{ marginTop: 0, color: '#2c3e50' }}>{productoConfigurando.nombre}</h3>
               
               {productoConfigurando.precio_promo > 0 ? (
@@ -364,7 +351,7 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <button onClick={() => modificarCantidadTopping(t, -1)} style={{ padding: '6px 14px', background: cant > 0 ? '#e74c3c' : '#bdc3c7', color: 'white', border: 'none', borderRadius: '4px', cursor: cant > 0 ? 'pointer' : 'default', fontWeight: 'bold' }}>-</button>
                           <span style={{ fontWeight: 'bold', width: '20px', textAlign: 'center', fontSize: '16px' }}>{cant}</span>
-                          <button onClick={() => modificarCantidadTopping(t, 1)} style={{ padding: '6px 14px', background: restauranterestauranteConfig?.colorSecundario || '#3498db', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>+</button>
+                          <button onClick={() => modificarCantidadTopping(t, 1)} style={{ padding: '6px 14px', background: restauranteConfig?.colorSecundario || '#3498db', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>+</button>
                         </div>
                       </div>
                     );
@@ -400,15 +387,15 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
                       <button onClick={() => eliminarDelCarrito(i)} style={{ background: '#e74c3c', color: 'white', border: 'none', borderRadius: '4px', width: '30px', height: '30px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', flexShrink: 0 }}>X</button>
                     </div>
                   ))}
-                  <button onClick={enviarComandaCocina} style={{ width: '100%', padding: '15px', background: restauranterestauranteConfig?.colorSecundario || '#e67e22', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '16px', marginTop: '10px', cursor: 'pointer' }}>
+                  <button onClick={enviarComandaCocina} style={{ width: '100%', padding: '15px', background: restauranteConfig?.colorSecundario || '#e67e22', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '16px', marginTop: '10px', cursor: 'pointer' }}>
                     🔔 ORDENAR ESTO A COCINA
                   </button>
                 </div>
               )}
               
               <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '15px', marginBottom: '15px' }}>
-                {Unicas.map(cat => (
-                  <button key={cat} onClick={() => setFiltroCategoriaCli(cat)} style={{ padding: '8px 15px', background: filtroCategoriaCli === cat ? (restauranterestauranteConfig?.colorPrincipal || '#2c3e50') : '#ecf0f1', color: filtroCategoriaCli === cat ? 'white' : '#2c3e50', border: 'none', borderRadius: '20px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {categoriasUnicas.map(cat => (
+                  <button key={cat} onClick={() => setFiltroCategoriaCli(cat)} style={{ padding: '8px 15px', background: filtroCategoriaCli === cat ? (restauranteConfig?.colorPrincipal || '#2c3e50') : '#ecf0f1', color: filtroCategoriaCli === cat ? 'white' : '#2c3e50', border: 'none', borderRadius: '20px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                     {cat}
                   </button>
                 ))}
@@ -425,57 +412,10 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
                       </div>
                     )}
                     <div>
-                      {/* LISTA DE PRODUCTOS - SOFT UI CARD DESIGN */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '100px' }}>
-                {menuFiltrado.map(prod => (
-                  <div key={prod.id} style={{ 
-                    background: 'white', 
-                    padding: '16px', 
-                    borderRadius: '24px', 
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.03)', 
-                    border: '1px solid rgba(0,0,0,0.01)',
-                    display: 'flex', 
-                    alignItems: 'center',
-                    gap: '16px'
-                  }}>
-                    {prod.imagenUrl ? (
-                      <img src={prod.imagenUrl} alt={prod.nombre} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} style={{ width: '85px', height: '80px', objectFit: 'cover', borderRadius: '16px', background: '#eee', flexShrink: 0 }} />
-                    ) : (
-                      <div style={{ width: '85px', height: '80px', backgroundColor: '#f4f6f8', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bdc3c7', fontSize: '24px', fontWeight: 'bold', flexShrink: 0 }}>
-                        {prod.nombre.charAt(0).toUpperCase()}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <h3 style={{ margin: '0 0 8px 0', color: '#2c3e50', fontSize: '18px' }}>{prod.nombre}</h3>
+                        <span style={{ fontSize: '10px', background: '#eee', padding: '3px 6px', borderRadius: '3px', color: '#777' }}>{prod.categoria || 'General'}</span>
                       </div>
-                    )}
-                    <div style={{ flex: 1 }}>
-                      <h3 style={{ margin: '0 0 6px 0', color: '#111827', fontSize: '16px', fontWeight: '800', lineHeight: '1.2' }}>{prod.nombre}</h3>
-                      {prod.precio_promo > 0 ? (
-                        <p style={{ fontSize: '15px', fontWeight: '800', color: '#e74c3c', margin: 0 }}>
-                          <span style={{ textDecoration: 'line-through', color: '#95a5a6', fontSize: '12px', marginRight: '6px' }}>Gs. {(prod.precio_base || 0).toLocaleString()}</span>
-                          Gs. {prod.precio_promo.toLocaleString()}
-                        </p>
-                      ) : (
-                        <p style={{ fontSize: '15px', fontWeight: '800', color: restauranterestauranteConfig?.colorPrincipal || '#27ae60', margin: 0 }}>Gs. {(prod.precio_base || 0).toLocaleString()}</p>
-                      )}
-                    </div>
-                    <button 
-                      onClick={() => iniciarConfiguracion(prod)} 
-                      style={{ 
-                        background: 'rgba(79, 70, 229, 0.06)', 
-                        color: restauranterestauranteConfig?.colorPrincipal || '#4f46e5', 
-                        border: 'none', 
-                        borderRadius: '14px', 
-                        width: '42px', 
-                        height: '42px', 
-                        fontSize: '22px', 
-                        fontWeight: '800', 
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0
-                      }}>+</button>
-                  </div>
-                ))}
-              </div>
                       {prod.precio_promo > 0 ? (
                         <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#e74c3c', margin: '0 0 15px 0' }}>
                           <span style={{ textDecoration: 'line-through', color: '#95a5a6', fontSize: '13px', marginRight: '6px' }}>Gs. {(prod.precio_base || 0).toLocaleString()}</span>
@@ -485,18 +425,7 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
                         <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#27ae60', margin: '0 0 15px 0' }}>Gs. {(prod.precio_base || 0).toLocaleString()}</p>
                       )}
                     </div>
-                    <button onClick={() => iniciarConfiguracion(prod)} style={{ 
-    width: '100%', 
-    padding: '12px', 
-    background: restauranteConfig?.colorPrimario || '#4f46e5', 
-    color: obtenerColorTextoContraste(restauranteConfig?.colorPrimario || '#4f46e5'), 
-    border: 'none', 
-    borderRadius: '12px', 
-    fontWeight: '800', 
-    fontSize: '15px', 
-    cursor: 'pointer',
-    transition: '0.3s'
-  }}>Agregar</button>
+                    <button onClick={() => iniciarConfiguracion(prod)} style={{ width: '100%', padding: '12px', background: restauranteConfig?.colorPrincipal || '#34495e', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px' }}>Agregar</button>
                   </div>
                 ))}
               </div>
@@ -513,7 +442,7 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
             <div>
               <div style={{ marginBottom: '20px' }}>
                 {Object.keys(resumenPorComensal).map((persona) => (
-                  <div key={persona} style={{ background: '#f8f9fa', padding: '15px', borderRadius: '6px', marginBottom: '15px', borderLeft: `4px solid ${restauranterestauranteConfig?.colorSecundario || '#3498db'}` }}>
+                  <div key={persona} style={{ background: '#f8f9fa', padding: '15px', borderRadius: '6px', marginBottom: '15px', borderLeft: `4px solid ${restauranteConfig?.colorSecundario || '#3498db'}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ddd', paddingBottom: '8px', marginBottom: '8px' }}>
                       <strong style={{ fontSize: '16px', color: '#2980b9' }}>Consumo de {persona}</strong>
                       <strong style={{ fontSize: '16px' }}>Gs. {(resumenPorComensal[persona].total || 0).toLocaleString()}</strong>
@@ -541,7 +470,7 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
                 <div style={{ textAlign: 'center', marginTop: '20px', borderTop: '2px dashed #eee', paddingTop: '20px' }}>
                   <span style={{ display: 'block', color: '#7f8c8d', fontSize: '14px' }}>Subtotal Consumido ({tipoDivision === 'separadas' ? 'Tu parte' : 'Toda la mesa'})</span>
                   <h3 style={{ color: '#2c3e50', fontSize: '28px', marginTop: '5px' }}>Gs. {(subtotalCobro || 0).toLocaleString()}</h3>
-                  <button onClick={() => setIniciandoPago(true)} style={{ width: '100%', padding: '20px', background: restauranterestauranteConfig?.colorSecundario || '#3498db', color: 'white', border: 'none', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                  <button onClick={() => setIniciandoPago(true)} style={{ width: '100%', padding: '20px', background: restauranteConfig?.colorSecundario || '#3498db', color: 'white', border: 'none', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                     PEDIR LA CUENTA / PAGAR
                   </button>
                 </div>
@@ -568,9 +497,9 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
                     <div style={{ marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '15px' }}>
                       <strong style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#2c3e50' }}>¿Deseas agregar Propina al Staff?</strong>
                       <div style={{ display: 'flex', gap: '10px' }}>
-                        <button onClick={() => setPropinaPct(0)} style={{ flex: 1, padding: '10px', background: propinaPct === 0 ? (restauranterestauranteConfig?.colorSecundario || '#3498db') : '#ecf0f1', color: propinaPct === 0 ? 'white' : '#333', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>0%</button>
-                        <button onClick={() => setPropinaPct(10)} style={{ flex: 1, padding: '10px', background: propinaPct === 10 ? (restauranterestauranteConfig?.colorSecundario || '#3498db') : '#ecf0f1', color: propinaPct === 10 ? 'white' : '#333', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>10%</button>
-                        <button onClick={() => setPropinaPct(15)} style={{ flex: 1, padding: '10px', background: propinaPct === 15 ? (restauranterestauranteConfig?.colorSecundario || '#3498db') : '#ecf0f1', color: propinaPct === 15 ? 'white' : '#333', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>15%</button>
+                        <button onClick={() => setPropinaPct(0)} style={{ flex: 1, padding: '10px', background: propinaPct === 0 ? (restauranteConfig?.colorSecundario || '#3498db') : '#ecf0f1', color: propinaPct === 0 ? 'white' : '#333', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>0%</button>
+                        <button onClick={() => setPropinaPct(10)} style={{ flex: 1, padding: '10px', background: propinaPct === 10 ? (restauranteConfig?.colorSecundario || '#3498db') : '#ecf0f1', color: propinaPct === 10 ? 'white' : '#333', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>10%</button>
+                        <button onClick={() => setPropinaPct(15)} style={{ flex: 1, padding: '10px', background: propinaPct === 15 ? (restauranteConfig?.colorSecundario || '#3498db') : '#ecf0f1', color: propinaPct === 15 ? 'white' : '#333', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>15%</button>
                       </div>
                     </div>
 
@@ -581,7 +510,7 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
                       </div>
                     )}
 
-                    <div style={{ background: restauranterestauranteConfig?.colorPrincipal || '#2c3e50', color: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center' }}>
+                    <div style={{ background: restauranteConfig?.colorPrincipal || '#2c3e50', color: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center' }}>
                       <span style={{ display: 'block', fontSize: '14px', marginBottom: '5px', color: '#bdc3c7' }}>Monto a Cobrarte</span>
                       <strong style={{ display: 'block', fontSize: '28px' }}>Gs. {(totalGeneralCobro || 0).toLocaleString()}</strong>
                     </div>
@@ -598,10 +527,10 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
                     {formaDePago === 'transferencia' && (
                       <div style={{ background: '#d4edda', color: '#155724', padding: '15px', borderRadius: '5px', marginTop: '10px', border: '1px solid #c3e6cb', fontSize: '14px' }}>
                         <strong style={{ display: 'block', marginBottom: '5px' }}>🏦 Realiza tu transferencia a:</strong>
-                        Banco: {restauranterestauranteConfig?.banco || 'N/A'}<br/>
-                        Cuenta: {restauranterestauranteConfig?.cuenta || 'N/A'}<br/>
-                        Titular: {restauranterestauranteConfig?.titular || 'N/A'}<br/>
-                        RUC: {restauranterestauranteConfig?.ruc || 'N/A'}
+                        Banco: {restauranteConfig?.banco || 'N/A'}<br/>
+                        Cuenta: {restauranteConfig?.cuenta || 'N/A'}<br/>
+                        Titular: {restauranteConfig?.titular || 'N/A'}<br/>
+                        RUC: {restauranteConfig?.ruc || 'N/A'}
                         <span style={{ display: 'block', marginTop: '10px', fontSize: '12px', opacity: 0.8 }}>* Presiona Confirmar y muestra el comprobante al mozo.</span>
                       </div>
                     )}
@@ -670,7 +599,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
   const [precioBase, setPrecioBase] = useState('');
   const [precioPromo, setPrecioPromo] = useState(''); 
   const [imagenUrl, setImagenUrl] = useState(''); 
-  const [elect, setelect] = useState('Plato Principal'); 
+  const [categoriaSelect, setCategoriaSelect] = useState('Plato Principal'); 
   const [toppingNombre, setToppingNombre] = useState('');
   const [toppingPrecio, setToppingPrecio] = useState('');
   const [toppingsLista, setToppingsLista] = useState([]); 
@@ -679,16 +608,16 @@ function VistaAdmin({ inventario, restauranteConfig }) {
   const [fechaInicioRep, setFechaInicioRep] = useState(new Date().toISOString().split('T')[0]);
   const [fechaFinRep, setFechaFinRep] = useState(new Date().toISOString().split('T')[0]);
 
-  const [inputNombreRest, setInputNombreRest] = useState(restauranterestauranteConfig?.nombre || '');
-  const [inputLogoUrl, setInputLogoUrl] = useState(restauranterestauranteConfig?.logoUrl || ''); 
-  const [inputColorPrincipal, setInputColorPrincipal] = useState(restauranterestauranteConfig?.colorPrincipal || '#2c3e50'); 
-  const [inputColorSecundario, setInputColorSecundario] = useState(restauranterestauranteConfig?.colorSecundario || '#e67e22'); 
-  const [inputDireccion, setInputDireccion] = useState(restauranterestauranteConfig?.direccion || '');
-  const [inputBanco, setInputBanco] = useState(restauranterestauranteConfig?.banco || '');
-  const [inputCuenta, setInputCuenta] = useState(restauranterestauranteConfig?.cuenta || '');
-  const [inputTitular, setInputTitular] = useState(restauranterestauranteConfig?.titular || '');
-  const [inputRuc, setInputRuc] = useState(restauranterestauranteConfig?.ruc || '');
-  const [inputTelefono, setInputTelefono] = useState(restauranterestauranteConfig?.telefono || '');
+  const [inputNombreRest, setInputNombreRest] = useState(restauranteConfig?.nombre || '');
+  const [inputLogoUrl, setInputLogoUrl] = useState(restauranteConfig?.logoUrl || ''); 
+  const [inputColorPrincipal, setInputColorPrincipal] = useState(restauranteConfig?.colorPrincipal || '#2c3e50'); 
+  const [inputColorSecundario, setInputColorSecundario] = useState(restauranteConfig?.colorSecundario || '#e67e22'); 
+  const [inputDireccion, setInputDireccion] = useState(restauranteConfig?.direccion || '');
+  const [inputBanco, setInputBanco] = useState(restauranteConfig?.banco || '');
+  const [inputCuenta, setInputCuenta] = useState(restauranteConfig?.cuenta || '');
+  const [inputTitular, setInputTitular] = useState(restauranteConfig?.titular || '');
+  const [inputRuc, setInputRuc] = useState(restauranteConfig?.ruc || '');
+  const [inputTelefono, setInputTelefono] = useState(restauranteConfig?.telefono || '');
 
   // CONTROL DE SESIÓN Y OBTENCIÓN DE PERMISOS
   useEffect(() => {
@@ -873,7 +802,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
     };
 
     const strRoles = Object.keys(permisosSolicitados).filter(k => permisosSolicitados[k]).join(", ");
-    const nombreLocal = restauranterestauranteConfig?.nombre || "Sucursal Desconocida";
+    const nombreLocal = restauranteConfig?.nombre || "Sucursal Desconocida";
 
     await addDoc(collection(db, `restaurantes/${tenantId}/tickets_usuarios`), {
       tipo: "ALTA",
@@ -902,7 +831,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
 
   const enviarTicketBajaStaff = async (u) => {
     if (window.confirm(`¿Solicitar remoción definitiva de ${u.email}?`)) {
-      const nombreLocal = restauranterestauranteConfig?.nombre || "Sucursal Desconocida";
+      const nombreLocal = restauranteConfig?.nombre || "Sucursal Desconocida";
 
       await addDoc(collection(db, `restaurantes/${tenantId}/tickets_usuarios`), {
         tipo: "BAJA",
@@ -984,7 +913,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
 
   const iniciarEdicion = (prod) => {
     setIdEditando(prod.id); setNombre(prod.nombre); setPrecioBase(prod.precio_base); setPrecioPromo(prod.precio_promo || '');
-    setelect(prod.categoria || 'Plato Principal'); setImagenUrl(prod.imagenUrl || ''); setToppingsLista(prod.toppings || []);
+    setCategoriaSelect(prod.categoria || 'Plato Principal'); setImagenUrl(prod.imagenUrl || ''); setToppingsLista(prod.toppings || []);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const cancelarEdicion = () => {
@@ -996,7 +925,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
     if (!nombre.trim() || !precioBase) return alert("Nombre y Precio Base son obligatorios.");
     const payload = { 
       nombre: nombre.trim(), precio_base: parseInt(precioBase), precio_promo: precioPromo ? parseInt(precioPromo) : null,
-      categoria: elect, imagenUrl: imagenUrl.trim(), toppings: toppingsLista 
+      categoria: categoriaSelect, imagenUrl: imagenUrl.trim(), toppings: toppingsLista 
     };
 
     if (idEditando) {
@@ -1056,26 +985,21 @@ function VistaAdmin({ inventario, restauranteConfig }) {
     }
   };
 
-  // RENDER PANTALLA LOGIN STAFF
+  // RENDER PANTALLA LOGIN
   if (!user) {
     return (
-      <div style={{ maxWidth: '400px', margin: '80px auto', background: 'white', padding: '40px 30px', borderRadius: '30px', boxShadow: '0 20px 50px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.03)', textAlign: 'center' }}>
-        <div style={{ background: 'rgba(79, 70, 229, 0.1)', width: '70px', height: '70px', borderRadius: '20px', margin: '0 auto 20px auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', color: '#4f46e5' }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-        </div>
-        <h3 style={{ marginTop: 0, color: '#111827', fontSize: '26px', fontWeight: '800', letterSpacing: '-0.5px' }}>Acceso Staff</h3>
-        <p style={{ color: '#6b7280', fontSize: '15px', fontWeight: '500', marginBottom: '30px' }}>Ingresá con tu correo autorizado.</p>
-        
+      <div style={{ maxWidth: '400px', margin: '100px auto', background: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+        <h3 style={{ marginTop: 0, textAlign: 'center', color: restauranteConfig?.colorPrincipal || '#2c3e50' }}>🔒 Login Staff</h3>
+        <p style={{ textAlign: 'center', color: '#7f8c8d', fontSize: '14px', marginBottom: '20px' }}>Ingresá con las credenciales que te entregó el administrador.</p>
         <form onSubmit={ejecutarLogin}>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Correo electrónico" style={{ width: '100%', padding: '18px', marginBottom: '15px', boxSizing: 'border-box', borderRadius: '16px', border: '2px solid transparent', background: '#f3f4f6', textAlign: 'center', fontSize: '15px', fontWeight: '600', outline: 'none', transition: '0.3s' }} onFocus={(e) => {e.target.style.borderColor = '#4f46e5'; e.target.style.background = 'white';}} onBlur={(e) => {e.target.style.borderColor = 'transparent'; e.target.style.background = '#f3f4f6';}} required />
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Contraseña" style={{ width: '100%', padding: '18px', marginBottom: '25px', boxSizing: 'border-box', borderRadius: '16px', border: '2px solid transparent', background: '#f3f4f6', textAlign: 'center', fontSize: '15px', fontWeight: '600', outline: 'none', transition: '0.3s' }} onFocus={(e) => {e.target.style.borderColor = '#4f46e5'; e.target.style.background = 'white';}} onBlur={(e) => {e.target.style.borderColor = 'transparent'; e.target.style.background = '#f3f4f6';}} required />
-          <button type="submit" style={{ width: '100%', padding: '18px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '16px', fontWeight: '800', cursor: 'pointer', fontSize: '16px', boxShadow: '0 10px 25px rgba(79, 70, 229, 0.25)', transition: '0.3s' }} onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'} onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}>
-            Iniciar Sesión
-          </button>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Correo electrónico" style={{ width: '100%', padding: '15px', marginBottom: '15px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} required />
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Contraseña" style={{ width: '100%', padding: '15px', marginBottom: '20px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} required />
+          <button type="submit" style={{ width: '100%', padding: '15px', background: restauranteConfig?.colorSecundario || '#e67e22', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>Acceder</button>
         </form>
       </div>
     );
   }
+
   // RENDER PANTALLA DE CARGA DE PERMISOS
   if (!permisos) {
     return <div style={{ textAlign: 'center', padding: '50px', fontSize: '20px', color: '#7f8c8d' }}>Validando credenciales y roles de seguridad...</div>;
@@ -1172,7 +1096,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           {permisos?.cocina && <button onClick={() => setSubModulo('cocina')} style={{ padding: '12px 18px', background: subModulo === 'cocina' ? '#e74c3c' : '#bdc3c7', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>🔥 COCINA</button>}
           {permisos?.caja && <button onClick={() => setSubModulo('caja')} style={{ padding: '12px 18px', background: subModulo === 'caja' ? '#27ae60' : '#bdc3c7', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>💰 CAJA ({Object.keys(mesasEnCaja).length})</button>}
-          {permisos?.abm && <button onClick={() => setSubModulo('menu')} style={{ padding: '12px 18px', background: subModulo === 'menu' ? (restauranterestauranteConfig?.colorPrincipal || '#2c3e50') : '#bdc3c7', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>⚙ ABM Menú</button>}
+          {permisos?.abm && <button onClick={() => setSubModulo('menu')} style={{ padding: '12px 18px', background: subModulo === 'menu' ? (restauranteConfig?.colorPrincipal || '#2c3e50') : '#bdc3c7', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>⚙ ABM Menú</button>}
           {permisos?.reportes && <button onClick={() => setSubModulo('reportes')} style={{ padding: '12px 18px', background: subModulo === 'reportes' ? '#8e44ad' : '#bdc3c7', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>📊 REPORTES</button>}
           {permisos?.sistema && <button onClick={() => setSubModulo('config')} style={{ padding: '12px 18px', background: subModulo === 'config' ? '#f39c12' : '#bdc3c7', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>🏢 Sistema</button>}
           {permisos?.admin && <button onClick={() => setSubModulo('staff')} style={{ padding: '12px 18px', background: subModulo === 'staff' ? '#34495e' : '#ecf0f1', color: subModulo === 'staff' ? 'white' : '#2c3e50', border: '2px solid #34495e', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>👥 STAFF / ROLES</button>}
@@ -1194,7 +1118,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
             <form onSubmit={enviarTicketAltaStaff}>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '15px' }}>
                 <input type="email" value={nuevoEmailStaff} onChange={e => setNuevoEmailStaff(e.target.value)} placeholder="Correo del empleado (Ej. mozo@pasta.com)" style={{ flex: '2', minWidth: '260px', padding: '12px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '15px' }} required />
-                <button type="submit" style={{ flex: '1', minWidth: '150px', padding: '12px', background: restauranterestauranteConfig?.colorSecundario || '#3498db', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }}>Enviar Solicitud</button>
+                <button type="submit" style={{ flex: '1', minWidth: '150px', padding: '12px', background: restauranteConfig?.colorSecundario || '#3498db', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }}>Enviar Solicitud</button>
               </div>
               
               <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', background: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #eee' }}>
@@ -1211,7 +1135,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
               <thead>
-                <tr style={{ background: restauranterestauranteConfig?.colorPrincipal || '#2c3e50', color: 'white' }}>
+                <tr style={{ background: restauranteConfig?.colorPrincipal || '#2c3e50', color: 'white' }}>
                   <th style={{ padding: '12px' }}>Empleado</th>
                   <th style={{ padding: '12px', textAlign: 'center' }}>🔥 Cocina</th>
                   <th style={{ padding: '12px', textAlign: 'center' }}>💰 Caja</th>
@@ -1365,7 +1289,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
                     <strong style={{ display: 'block', marginBottom: '10px', color: '#7f8c8d', borderBottom: '1px solid #f1f2f6', paddingBottom: '4px' }}>Detalle de Consumos por Usuario:</strong>
                     
                     {Object.keys(infoMesa.comensales).map(persona => (
-                      <div key={persona} style={{ display: 'flex', flexDirection: 'column', marginBottom: '10px', background: '#f8f9fa', padding: '10px', borderRadius: '6px', borderLeft: `4px solid ${restauranterestauranteConfig?.colorSecundario || '#3498db'}` }}>
+                      <div key={persona} style={{ display: 'flex', flexDirection: 'column', marginBottom: '10px', background: '#f8f9fa', padding: '10px', borderRadius: '6px', borderLeft: `4px solid ${restauranteConfig?.colorSecundario || '#3498db'}` }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                           <span style={{ fontWeight: 'bold', color: '#2980b9' }}>👤 {persona}</span>
                           <strong style={{ color: '#2c3e50' }}>Gs. {(infoMesa.comensales[persona].total || 0).toLocaleString()}</strong>
@@ -1395,7 +1319,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
                     </div>
                   </div>
 
-                  <button onClick={() => facturarMesaCaja(mesaId, alertaActiva)} style={{ width: '100%', padding: '15px', background: restauranterestauranteConfig?.colorPrincipal || '#2c3e50', color: 'white', border: 'none', borderRadius: '6px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  <button onClick={() => facturarMesaCaja(mesaId, alertaActiva)} style={{ width: '100%', padding: '15px', background: restauranteConfig?.colorPrincipal || '#2c3e50', color: 'white', border: 'none', borderRadius: '6px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>
                     {tieneAlerta && alertaActiva.tipo_division === 'separadas' ? `Cobrar individual a ${alertaActiva.solicitante}` : 'Confirmar Pago Total y Liberar Mesa'}
                   </button>
                 </div>
@@ -1414,8 +1338,8 @@ function VistaAdmin({ inventario, restauranteConfig }) {
         <div style={{ display: 'flex', gap: '25px', flexWrap: 'wrap', flexDirection: 'column' }}>
           <div style={{ display: 'flex', gap: '25px', flexWrap: 'wrap' }}>
             <div style={{ flex: '1', minWidth: '320px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div style={{ background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', borderTop: idEditando ? `4px solid ${restauranterestauranteConfig?.colorSecundario || '#3498db'}` : 'none' }}>
-                <h3 style={{ marginTop: 0, color: idEditando ? (restauranterestauranteConfig?.colorSecundario || '#3498db') : '#333' }}>{idEditando ? '✏ Editando Producto' : 'Formulario ABM Manual'}</h3>
+              <div style={{ background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', borderTop: idEditando ? `4px solid ${restauranteConfig?.colorSecundario || '#3498db'}` : 'none' }}>
+                <h3 style={{ marginTop: 0, color: idEditando ? (restauranteConfig?.colorSecundario || '#3498db') : '#333' }}>{idEditando ? '✏ Editando Producto' : 'Formulario ABM Manual'}</h3>
                 <form onSubmit={guardarMenuEnFirebase}>
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Nombre del Plato</label>
                   <input type="text" value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej. Lasaña Clásica" style={{ width: '100%', padding: '12px', marginBottom: '15px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }}/>
@@ -1449,7 +1373,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
                     <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'stretch' }}>
                       <input type="text" placeholder="Ej. Queso Extra" value={toppingNombre} onChange={e => setToppingNombre(e.target.value)} style={{ flex: '1 1 50%', padding: '10px', boxSizing: 'border-box', minWidth: '0', borderRadius: '4px', border: '1px solid #ccc' }} />
                       <input type="number" placeholder="Gs." value={toppingPrecio} onChange={e => setToppingPrecio(e.target.value)} style={{ flex: '1 1 30%', padding: '10px', boxSizing: 'border-box', minWidth: '0', borderRadius: '4px', border: '1px solid #ccc' }} />
-                      <button type="button" onClick={agregarToppingAlListadoTemporal} style={{ flex: '0 0 auto', background: restauranterestauranteConfig?.colorSecundario || '#3498db', color: 'white', border: 'none', padding: '0 20px', cursor: 'pointer', borderRadius: '4px', fontWeight: 'bold', fontSize: '20px' }}>+</button>
+                      <button type="button" onClick={agregarToppingAlListadoTemporal} style={{ flex: '0 0 auto', background: restauranteConfig?.colorSecundario || '#3498db', color: 'white', border: 'none', padding: '0 20px', cursor: 'pointer', borderRadius: '4px', fontWeight: 'bold', fontSize: '20px' }}>+</button>
                     </div>
                     <ul style={{ paddingLeft: '20px', margin: '10px 0 0 0' }}>
                       {toppingsLista.map((t, i) => (
@@ -1458,7 +1382,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
                     </ul>
                   </div>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <button type="submit" style={{ flex: 1, padding: '15px', background: idEditando ? (restauranterestauranteConfig?.colorSecundario || '#3498db') : '#2ecc71', color: 'white', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px', borderRadius: '6px' }}>{idEditando ? 'Actualizar Plato' : 'Guardar Manual'}</button>
+                    <button type="submit" style={{ flex: 1, padding: '15px', background: idEditando ? (restauranteConfig?.colorSecundario || '#3498db') : '#2ecc71', color: 'white', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px', borderRadius: '6px' }}>{idEditando ? 'Actualizar Plato' : 'Guardar Manual'}</button>
                     {idEditando && <button type="button" onClick={cancelarEdicion} style={{ padding: '15px', background: '#e74c3c', color: 'white', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px', borderRadius: '6px' }}>Cancelar</button>}
                   </div>
                 </form>
@@ -1495,7 +1419,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => iniciarEdicion(prod)} style={{ padding: '8px 12px', cursor: 'pointer', background: restauranterestauranteConfig?.colorSecundario || '#3498db', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>Editar</button>
+                    <button onClick={() => iniciarEdicion(prod)} style={{ padding: '8px 12px', cursor: 'pointer', background: restauranteConfig?.colorSecundario || '#3498db', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>Editar</button>
                     <button onClick={() => cambiarEstadoVisibilidadProducto(prod)} style={{ padding: '8px 12px', cursor: 'pointer', background: prod.estado === 'activo' ? '#f39c12' : '#2ecc71', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>{prod.estado === 'activo' ? 'Pausar' : 'Activar'}</button>
                     <button onClick={() => borrarProductoDefinitivo(prod)} style={{ padding: '8px 12px', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Eliminar</button>
                   </div>
@@ -1557,11 +1481,11 @@ function VistaAdmin({ inventario, restauranteConfig }) {
               return (
                 <div>
                   <div style={{ display: 'flex', gap: '20px', marginBottom: '30px', flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 300px', background: restauranterestauranteConfig?.colorPrincipal || '#2c3e50', color: 'white', padding: '25px', borderRadius: '8px', textAlign: 'center' }}>
+                    <div style={{ flex: '1 1 300px', background: restauranteConfig?.colorPrincipal || '#2c3e50', color: 'white', padding: '25px', borderRadius: '8px', textAlign: 'center' }}>
                       <span style={{ display: 'block', fontSize: '14px', color: '#bdc3c7', marginBottom: '10px' }}>TOTAL BRUTO FACTURADO</span>
                       <strong style={{ display: 'block', fontSize: '36px' }}>Gs. {(totalFacturado || 0).toLocaleString()}</strong>
                     </div>
-                    <div style={{ flex: '1 1 300px', background: restauranterestauranteConfig?.colorSecundario || '#e67e22', color: 'white', padding: '25px', borderRadius: '8px', textAlign: 'center' }}>
+                    <div style={{ flex: '1 1 300px', background: restauranteConfig?.colorSecundario || '#e67e22', color: 'white', padding: '25px', borderRadius: '8px', textAlign: 'center' }}>
                       <span style={{ display: 'block', fontSize: '14px', color: '#f3e5ab', marginBottom: '10px' }}>MESAS COBRADAS (VOLUMEN)</span>
                       <strong style={{ display: 'block', fontSize: '36px' }}>{ticketsCobrados.length}</strong>
                     </div>
@@ -1639,7 +1563,7 @@ function VistaAdmin({ inventario, restauranteConfig }) {
       {/* RENDERIZADO: CONFIGURACIÓN GENERAL */}
       {subModulo === 'config' && permisos?.sistema && (
         <div style={{ maxWidth: '600px', background: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ marginTop: 0, color: restauranterestauranteConfig?.colorPrincipal || '#2c3e50' }}>🏢 Variables del Restaurante</h3>
+          <h3 style={{ marginTop: 0, color: restauranteConfig?.colorPrincipal || '#2c3e50' }}>🏢 Variables del Restaurante</h3>
           <form onSubmit={guardarVariablesRestaurante}>
             <label style={{ display: 'block', marginBottom: '15px', fontWeight: 'bold' }}>Nombre Comercial:<input type="text" value={inputNombreRest} onChange={e => setInputNombreRest(e.target.value)} style={{ width: '100%', padding: '12px', marginTop: '5px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} required /></label>
             <label style={{ display: 'block', marginBottom: '15px', fontWeight: 'bold' }}>URL del Logo:<input type="text" value={inputLogoUrl} onChange={e => setInputLogoUrl(e.target.value)} placeholder="https://..." style={{ width: '100%', padding: '12px', marginTop: '5px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} /></label>
@@ -1652,13 +1576,13 @@ function VistaAdmin({ inventario, restauranteConfig }) {
             <label style={{ display: 'block', marginBottom: '15px', fontWeight: 'bold' }}>Dirección:<input type="text" value={inputDireccion} onChange={e => setInputDireccion(e.target.value)} style={{ width: '100%', padding: '12px', marginTop: '5px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} required /></label>
             <label style={{ display: 'block', marginBottom: '15px', fontWeight: 'bold' }}>Teléfono:<input type="text" value={inputTelefono} onChange={e => setInputTelefono(e.target.value)} style={{ width: '100%', padding: '12px', marginTop: '5px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} required /></label>
             
-            <h4 style={{ borderBottom: '1px solid #eee', paddingBottom: '5px', marginTop: '25px', color: restauranterestauranteConfig?.colorPrincipal || '#2c3e50' }}>Datos para Transferencias (Caja)</h4>
+            <h4 style={{ borderBottom: '1px solid #eee', paddingBottom: '5px', marginTop: '25px', color: restauranteConfig?.colorPrincipal || '#2c3e50' }}>Datos para Transferencias (Caja)</h4>
             <label style={{ display: 'block', marginBottom: '15px', fontWeight: 'bold' }}>Banco:<input type="text" value={inputBanco} onChange={e => setInputBanco(e.target.value)} style={{ width: '100%', padding: '12px', marginTop: '5px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} /></label>
             <label style={{ display: 'block', marginBottom: '15px', fontWeight: 'bold' }}>Nro Cuenta:<input type="text" value={inputCuenta} onChange={e => setInputCuenta(e.target.value)} style={{ width: '100%', padding: '12px', marginTop: '5px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} /></label>
             <label style={{ display: 'block', marginBottom: '15px', fontWeight: 'bold' }}>Titular:<input type="text" value={inputTitular} onChange={e => setInputTitular(e.target.value)} style={{ width: '100%', padding: '12px', marginTop: '5px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} /></label>
             <label style={{ display: 'block', marginBottom: '25px', fontWeight: 'bold' }}>RUC:<input type="text" value={inputRuc} onChange={e => setInputRuc(e.target.value)} style={{ width: '100%', padding: '12px', marginTop: '5px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} /></label>
             
-            <button type="submit" style={{ width: '100%', padding: '18px', background: restauranterestauranteConfig?.colorSecundario || '#2ecc71', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>Guardar Cambios de Configuración</button>
+            <button type="submit" style={{ width: '100%', padding: '18px', background: restauranteConfig?.colorSecundario || '#2ecc71', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>Guardar Cambios de Configuración</button>
           </form>
         </div>
       )}
