@@ -1059,7 +1059,7 @@ function VistaAdmin({ inventario, restauranteConfig, paywallBloqueado }) {
         <p style={{ color: '#6b7280', fontSize: '15px', lineHeight: '1.6', marginBottom: '30px' }}>Tu cuenta se encuentra suspendida temporalmente por falta de pago o fin de la demo. Para reactivar el monitor de comandas, la caja y el menú QR, realiza la renovación del servicio.</p>
         <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '16px', marginBottom: '30px', textAlign: 'left', border: '1px solid #e5e7eb' }}>
           <strong style={{ display: 'block', color: '#111827', marginBottom: '10px' }}>Plan Master Resto Profesional:</strong>
-          • Tarifa Plana por Sucursal: <strong>USD 49 / mes</strong><br/>
+          • Tarifa Plana por Sucursal: <strong>USD 49 / año</strong><br/>
           • Licencia Operativa: <strong>Incluye hasta 5 usuarios (Staff)</strong><br/>
           <span style={{ display: 'block', marginTop: '10px', fontSize: '13px', color: '#6b7280' }}>* Si tu local posee más de 5 empleados activos en el sistema, comunícate con soporte para un plan a medida.</span>
         </div>
