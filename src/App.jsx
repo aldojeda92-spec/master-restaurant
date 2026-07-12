@@ -1055,15 +1055,15 @@ function VistaAdmin({ inventario, restauranteConfig, paywallBloqueado }) {
     return (
       <div style={{ maxWidth: '600px', margin: '60px auto', background: 'white', padding: '40px', borderRadius: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.05)', textAlign: 'center', border: '1px solid #fee2e2' }}>
         <span style={{ fontSize: '50px' }}>💳</span>
-        <h2 style={{ color: '#111827', fontWeight: '900' }}>Período de Prueba Finalizado</h2>
-        <p style={{ color: '#6b7280', fontSize: '15px', lineHeight: '1.6', marginBottom: '30px' }}>Tu cuenta se encuentra suspendida temporalmente por límite de tiempo. Para reactivar el monitor de comandas, la caja y el menú QR, realiza la renovación del servicio.</p>
+        <h2 style={{ color: '#111827', fontWeight: '900' }}>Suscripción Vencida</h2>
+        <p style={{ color: '#6b7280', fontSize: '15px', lineHeight: '1.6', marginBottom: '30px' }}>Tu cuenta se encuentra suspendida temporalmente por falta de pago o fin de la demo. Para reactivar el monitor de comandas, la caja y el menú QR, realiza la renovación del servicio.</p>
         <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '16px', marginBottom: '30px', textAlign: 'left', border: '1px solid #e5e7eb' }}>
-          <strong style={{ display: 'block', color: '#111827', marginBottom: '10px' }}>Estructura del Plan Activado:</strong>
-          • Costo de Implementación: <span style={{ textDecoration: 'line-through', color: '#9ca3af' }}>USD 100</span> <strong>USD 49 (Pago único)</strong><br/>
-          • Suscripción Mensual Base: <strong>USD 1,99 / mes</strong> (Incluye 2 usuarios de Staff)<br/>
-          • Usuario Extra: <strong>USD 0,90 / mes</strong>
+          <strong style={{ display: 'block', color: '#111827', marginBottom: '10px' }}>Plan Master Resto Profesional:</strong>
+          • Tarifa Plana por Sucursal: <strong>USD 49 / mes</strong><br/>
+          • Licencia Operativa: <strong>Incluye hasta 5 usuarios (Staff)</strong><br/>
+          <span style={{ display: 'block', marginTop: '10px', fontSize: '13px', color: '#6b7280' }}>* Si tu local posee más de 5 empleados activos en el sistema, comunícate con soporte para un plan a medida.</span>
         </div>
-        <a href="https://dlocalgo.com/" target="_blank" rel="noreferrer" style={{ display: 'block', padding: '18px', background: '#10b981', color: 'white', borderRadius: '16px', fontWeight: '800', textDecoration: 'none', boxShadow: '0 10px 20px rgba(16, 185, 129, 0.2)' }}>Pagar y Reactivar con dLocal Go</a>
+        <a href="https://dlocalgo.com/" target="_blank" rel="noreferrer" style={{ display: 'block', padding: '18px', background: '#10b981', color: 'white', borderRadius: '16px', fontWeight: '800', textDecoration: 'none', boxShadow: '0 10px 20px rgba(16, 185, 129, 0.2)' }}>Pagar Licencia (dLocal Go)</a>
       </div>
     );
   }
@@ -1674,7 +1674,7 @@ function VistaAdmin({ inventario, restauranteConfig, paywallBloqueado }) {
 }
 
 // ==========================================
-// COMPONENTE NUEVO: PANEL SUPER ADMIN SAAS
+// COMPONENTE NUEVO: PANEL SUPER ADMIN SAAS (CON FACTURACIÓN)
 // ==========================================
 function SuperAdminDashboard() {
   const [user, setUser] = useState(null);
@@ -1687,6 +1687,7 @@ function SuperAdminDashboard() {
   const [editandoTenant, setEditandoTenant] = useState(null);
   const [tempEstado, setTempEstado] = useState('');
   const [tempFecha, setTempFecha] = useState('');
+  const [tempFechaMensualidad, setTempFechaMensualidad] = useState('');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -1703,19 +1704,40 @@ function SuperAdminDashboard() {
   const cargarTodosLosRestaurantes = async () => {
     setCargando(true);
     try {
-      // Escanea absolutamente todas las configuraciones en Firebase
       const querySnapshot = await getDocs(collectionGroup(db, 'configuracion'));
       const lista = [];
+      
+      const proms = [];
+
       querySnapshot.forEach((docSnap) => {
         if (docSnap.id === 'datos') {
           const idInquilino = docSnap.ref.parent.parent.id;
-          lista.push({ id_tenant: idInquilino, ...docSnap.data() });
+          const dataConfig = docSnap.data();
+          
+          const p = getDocs(collection(db, `restaurantes/${idInquilino}/usuarios`)).then(usuariosSnap => {
+            let cantUsuarios = 0;
+            usuariosSnap.forEach(u => {
+               if(u.id !== 'aldojeda92@gmail.com') cantUsuarios++;
+            });
+
+            lista.push({ 
+              id_tenant: idInquilino, 
+              cantidad_usuarios: cantUsuarios,
+              ...dataConfig 
+            });
+          });
+          proms.push(p);
         }
       });
+
+      await Promise.all(proms);
+      
+      lista.sort((a, b) => a.id_tenant.localeCompare(b.id_tenant));
       setRestaurantesBD(lista);
+
     } catch (error) {
       console.error("Error cargando panel maestro:", error);
-      alert("Error al cargar la base de datos. Verifica reglas de Firebase.");
+      alert("Error al cargar la base de datos.");
     }
     setCargando(false);
   };
@@ -1733,17 +1755,19 @@ function SuperAdminDashboard() {
     setEditandoTenant(rest.id_tenant);
     setTempEstado(rest.estadoSuscripcion || 'demo');
     setTempFecha(rest.fechaFinDemo || new Date().toISOString().split('T')[0]);
+    setTempFechaMensualidad(rest.fechaVencimientoMensual || '');
   };
 
   const guardarEdicionRapida = async (id_tenant) => {
     try {
       await updateDoc(doc(db, `restaurantes/${id_tenant}/configuracion`, 'datos'), {
         estadoSuscripcion: tempEstado,
-        fechaFinDemo: tempFecha
+        fechaFinDemo: tempFecha,
+        fechaVencimientoMensual: tempFechaMensualidad || null
       });
-      alert(`✅ Licencia de ${id_tenant} actualizada.`);
+      alert(`✅ Facturación de ${id_tenant} actualizada.`);
       setEditandoTenant(null);
-      cargarTodosLosRestaurantes(); // Refrescar lista
+      cargarTodosLosRestaurantes();
     } catch (error) {
       alert("Error al guardar: " + error.message);
     }
@@ -1769,7 +1793,6 @@ function SuperAdminDashboard() {
     );
   }
 
-  // SI SE LOGUEA ALGUIEN QUE NO SOS VOS, REBOTA.
   if (user.email !== 'aldojeda92@gmail.com') {
     return (
       <div style={{ padding: '50px', textAlign: 'center', fontFamily: 'sans-serif' }}>
@@ -1782,90 +1805,110 @@ function SuperAdminDashboard() {
 
   return (
     <div style={{ fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif', backgroundColor: '#f3f4f6', minHeight: '100vh', padding: '20px' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
         
-        {/* CABECERA SUPER ADMIN */}
         <div style={{ background: '#111827', color: 'white', padding: '30px', borderRadius: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
           <div>
-            <h1 style={{ margin: '0 0 10px 0', fontSize: '28px', fontWeight: '900', color: '#c4b5fd' }}>👑 Cuartel General SaaS</h1>
-            <span style={{ fontSize: '14px', color: '#9ca3af' }}>Control global de infraestructura y licencias de Master Resto.</span>
+            <h1 style={{ margin: '0 0 10px 0', fontSize: '28px', fontWeight: '900', color: '#c4b5fd' }}>👑 Billing & Control Center</h1>
+            <span style={{ fontSize: '14px', color: '#9ca3af' }}>Control global de facturación y empleados de clientes.</span>
           </div>
           <button onClick={() => signOut(auth)} style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}>Salir de Central</button>
         </div>
 
-        {/* TABLA DE INQUILINOS */}
-        <div style={{ background: 'white', padding: '30px', borderRadius: '24px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+        <div style={{ background: 'white', padding: '30px', borderRadius: '24px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', overflowX: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #f3f4f6', paddingBottom: '20px', marginBottom: '20px' }}>
             <h2 style={{ margin: 0, color: '#111827', fontWeight: '900' }}>Inquilinos Activos ({restaurantesBD.length})</h2>
             <button onClick={cargarTodosLosRestaurantes} style={{ padding: '10px 16px', background: '#f3f4f6', color: '#4b5563', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>🔄 Refrescar Red</button>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ color: '#6b7280', fontSize: '13px', textTransform: 'uppercase', borderBottom: '1px solid #e5e7eb' }}>
-                  <th style={{ padding: '15px' }}>Tenant ID (Subdominio)</th>
-                  <th style={{ padding: '15px' }}>Nombre Comercial</th>
-                  <th style={{ padding: '15px' }}>Divisa</th>
-                  <th style={{ padding: '15px' }}>Estado SaaS</th>
-                  <th style={{ padding: '15px' }}>Fin de Licencia</th>
-                  <th style={{ padding: '15px', textAlign: 'right' }}>Acción Remota</th>
-                </tr>
-              </thead>
-              <tbody>
-                {restaurantesBD.map((rest, idx) => {
-                  const esEditando = editandoTenant === rest.id_tenant;
-                  const estadoColor = rest.estadoSuscripcion === 'activo' ? '#10b981' : rest.estadoSuscripcion === 'suspendido' ? '#ef4444' : '#f59e0b';
-                  
-                  return (
-                    <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6', transition: '0.2s' }}>
-                      <td style={{ padding: '15px', fontWeight: '700', color: '#4f46e5' }}>{rest.id_tenant}</td>
-                      <td style={{ padding: '15px', fontWeight: '700', color: '#111827' }}>{rest.nombre || 'Sin configurar'}</td>
-                      <td style={{ padding: '15px', fontWeight: '600', color: '#6b7280' }}>{rest.moneda || 'Gs.'}</td>
-                      
-                      <td style={{ padding: '15px' }}>
-                        {esEditando ? (
-                          <select value={tempEstado} onChange={e => setTempEstado(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }}>
-                            <option value="demo">Demo</option>
-                            <option value="activo">Activo</option>
-                            <option value="suspendido">Suspendido</option>
-                          </select>
-                        ) : (
-                          <span style={{ background: `${estadoColor}20`, color: estadoColor, padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase' }}>
-                            {rest.estadoSuscripcion || 'Desconocido'}
-                          </span>
-                        )}
-                      </td>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
+            <thead>
+              <tr style={{ color: '#6b7280', fontSize: '12px', textTransform: 'uppercase', borderBottom: '2px solid #e5e7eb' }}>
+                <th style={{ padding: '15px' }}>Tenant (Local)</th>
+                <th style={{ padding: '15px' }}>Estado SaaS</th>
+                <th style={{ padding: '15px' }}>Vto. Setup (Demo)</th>
+                <th style={{ padding: '15px' }}>Vto. Mensualidad</th>
+                <th style={{ padding: '15px', textAlign: 'center' }}>👥 Staff</th>
+                <th style={{ padding: '15px', textAlign: 'right' }}>Acción Remota</th>
+              </tr>
+            </thead>
+            <tbody>
+              {restaurantesBD.map((rest, idx) => {
+                const esEditando = editandoTenant === rest.id_tenant;
+                const estadoColor = rest.estadoSuscripcion === 'activo' ? '#10b981' : rest.estadoSuscripcion === 'suspendido' ? '#ef4444' : '#f59e0b';
+                
+                return (
+                  <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6', transition: '0.2s', background: esEditando ? '#fefce8' : 'transparent' }}>
+                    <td style={{ padding: '15px' }}>
+                      <strong style={{ display: 'block', color: '#4f46e5', fontSize: '15px' }}>{rest.id_tenant}</strong>
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>{rest.nombre || 'Sin configurar'}</span>
+                    </td>
+                    
+                    <td style={{ padding: '15px' }}>
+                      {esEditando ? (
+                        <select value={tempEstado} onChange={e => setTempEstado(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d1d5db', width: '100%' }}>
+                          <option value="demo">Demo Activa</option>
+                          <option value="activo">Activo (Pagado)</option>
+                          <option value="suspendido">Suspendido</option>
+                        </select>
+                      ) : (
+                        <span style={{ background: `${estadoColor}20`, color: estadoColor, padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase' }}>
+                          {rest.estadoSuscripcion || 'Desconocido'}
+                        </span>
+                      )}
+                    </td>
 
-                      <td style={{ padding: '15px' }}>
-                        {esEditando ? (
-                          <input type="date" value={tempFecha} onChange={e => setTempFecha(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }} />
-                        ) : (
-                          <span style={{ fontWeight: '600', color: '#4b5563' }}>{rest.fechaFinDemo || 'Sin Límite'}</span>
-                        )}
-                      </td>
+                    <td style={{ padding: '15px' }}>
+                      {esEditando ? (
+                        <input type="date" value={tempFecha} onChange={e => setTempFecha(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d1d5db', width: '100%' }} />
+                      ) : (
+                        <span style={{ fontWeight: '600', color: '#4b5563', fontSize: '14px' }}>{rest.fechaFinDemo || 'No asig.'}</span>
+                      )}
+                    </td>
 
-                      <td style={{ padding: '15px', textAlign: 'right' }}>
-                        {esEditando ? (
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                            <button onClick={() => guardarEdicionRapida(rest.id_tenant)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Guardar</button>
-                            <button onClick={() => setEditandoTenant(null)} style={{ background: '#f3f4f6', color: '#4b5563', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>X</button>
-                          </div>
-                        ) : (
-                          <button onClick={() => iniciarEdicionRapida(rest)} style={{ background: 'transparent', color: '#8b5cf6', border: '1px solid #8b5cf6', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', transition: '0.2s' }}>Editar Licencia</button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-                {restaurantesBD.length === 0 && (
-                  <tr><td colSpan="6" style={{ padding: '30px', textAlign: 'center', color: '#6b7280' }}>No hay restaurantes registrados en Firebase.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                    <td style={{ padding: '15px' }}>
+                      {esEditando ? (
+                        <input type="date" value={tempFechaMensualidad} onChange={e => setTempFechaMensualidad(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d1d5db', width: '100%' }} />
+                      ) : (
+                        <span style={{ fontWeight: '800', color: rest.fechaVencimientoMensual && new Date(rest.fechaVencimientoMensual) < new Date() ? '#ef4444' : '#6b7280', fontSize: '14px' }}>
+                          {rest.fechaVencimientoMensual || 'Exento'}
+                        </span>
+                      )}
+                    </td>
+
+                    <td style={{ padding: '15px', textAlign: 'center' }}>
+                      <span style={{ 
+                        background: rest.cantidad_usuarios > 5 ? '#fee2e2' : '#f3f4f6', 
+                        padding: '6px 12px', 
+                        borderRadius: '8px', 
+                        fontWeight: '900', 
+                        color: rest.cantidad_usuarios > 5 ? '#ef4444' : '#111827',
+                        border: rest.cantidad_usuarios > 5 ? '1px solid #ef4444' : 'none'
+                      }}>
+                        {rest.cantidad_usuarios} / 5
+                      </span>
+                      {rest.cantidad_usuarios > 5 && <span style={{display: 'block', fontSize: '10px', color: '#ef4444', marginTop: '4px', fontWeight: 'bold'}}>EXCEDIDO</span>}
+                    </td>
+
+                    <td style={{ padding: '15px', textAlign: 'right' }}>
+                      {esEditando ? (
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                          <button onClick={() => guardarEdicionRapida(rest.id_tenant)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Guardar</button>
+                          <button onClick={() => setEditandoTenant(null)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>X</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => iniciarEdicionRapida(rest)} style={{ background: '#f3f4f6', color: '#4f46e5', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', transition: '0.2s' }}>Facturar</button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {restaurantesBD.length === 0 && (
+                <tr><td colSpan="6" style={{ padding: '30px', textAlign: 'center', color: '#6b7280' }}>No hay restaurantes registrados en Firebase.</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
-
       </div>
     </div>
   );
