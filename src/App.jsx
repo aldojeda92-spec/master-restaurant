@@ -1,20 +1,7 @@
 import React, { useState, useEffect } from 'react';
-
-// --- NOTA DE COMPILACIÓN ---
-// Se ha inicializado Firebase directamente aquí para evitar el error 'Could not resolve "./firebase"'.
-// Si en tu proyecto de StackBlitz utilizas tu propio archivo `firebase.js`, puedes borrar esta 
-// inicialización y descomentar tu importación original:
-// import { db, auth } from './firebase';
-// -----------------------------
-
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, getDocs, limit, collectionGroup } from 'firebase/firestore';
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+import { db, auth } from './firebase';
+import { collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, getDocs, limit, collectionGroup } from 'firebase/firestore';
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // ==========================================
 // MOTOR MULTI-TENANT (RUTEADOR DE INQUILINOS)
@@ -46,7 +33,7 @@ const obtenerColorTextoContraste = (hexColor) => {
 // APP PRINCIPAL (CON GUARDIA DE TRÁFICO)
 // ==========================================
 export default function App() {
-  // INTERCEPTOR DE RUTA PARA EL SÚPER ADMIN (A prueba de Vercel)
+ // INTERCEPTOR DE RUTA PARA EL SÚPER ADMIN (A prueba de Vercel)
   const parametros = new URLSearchParams(window.location.search);
   if (parametros.get('master') === 'true') {
     return <SuperAdminDashboard />;
@@ -103,7 +90,7 @@ export default function App() {
   const cuentaSuspendida = config.estadoSuscripcion === 'suspendido';
   const requierePago = demoExpirada || cuentaSuspendida;
 
-  // MURO CLIENTE: SI LA DEMO EXPIRO, OCULTAMOS EL MENÚ Y DEJAMOS BOTÓN DE RESCATE
+  // REGLA UX: SI LA DEMO EXPIRO, PINTAMOS EL CORDÓN DE SEGURIDAD PARA COMENSALES
   if (requierePago && vistaActual === 'cliente') {
     return (
       <div style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', background: '#f8f9fa', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
@@ -112,6 +99,7 @@ export default function App() {
           <h2 style={{ color: '#111827', fontWeight: '900', marginTop: '15px' }}>Menú en Mantenimiento</h2>
           <p style={{ color: '#6b7280', fontSize: '15px', lineHeight: '1.6', fontWeight: '500', marginBottom: '30px' }}>Estamos optimizando nuestra plataforma digital para brindarte un mejor servicio. Por favor, solicita la carta física o asistencia al personal del local.</p>
           
+          {/* BOTÓN DE RESCATE (PUERTA TRASERA PARA STAFF / ALDO) */}
           <button onClick={() => setVistaActual('admin')} style={{ background: 'none', border: 'none', color: '#9ca3af', fontWeight: '700', fontSize: '14px', cursor: 'pointer', borderTop: '1px solid #f3f4f6', paddingTop: '20px', width: '100%' }}>
             Ingreso Staff / Operador SaaS
           </button>
@@ -214,6 +202,7 @@ function VistaCliente({ menu, restauranteConfig, mesaFija, comensal }) {
   const [facturaRuc, setFacturaRuc] = useState('');
   const [facturaNombre, setFacturaNombre] = useState('');
 
+  // MULTIMONEDA APLICADA AL CLIENTE
   const divisa = restauranteConfig?.moneda || 'Gs.';
 
   const menuActivo = menu.filter(p => p.estado === 'activo');
@@ -952,48 +941,20 @@ function VistaAdmin({ inventario, restauranteConfig, paywallBloqueado }) {
   };
 
   const facturarMesaCaja = async (mesaId, alerta) => {
-    let comandasAfectadas = [];
-    let alertasAfectadas = [];
-    let esCancelacion = false;
-    let mensajeConf = "";
-
-    // 1. Identificar si es un pago individual o de mesa completa
     if (alerta && alerta.tipo_division === 'separadas') {
-      comandasAfectadas = comandasCocina.filter(c => c.mesa === mesaId && c.estado !== 'pagado' && c.estado !== 'cancelado' && c.comensal === alerta.solicitante);
-      alertasAfectadas = [alerta];
-      mensajeConf = `¿Confirmar cobro individual de ${divisa} ${alerta.total_final.toLocaleString()} a ${alerta.solicitante}?`;
-    } else {
-      comandasAfectadas = comandasCocina.filter(c => c.mesa === mesaId && c.estado !== 'pagado' && c.estado !== 'cancelado');
-      alertasAfectadas = alertasCaja.filter(a => a.mesa === mesaId && a.estado === 'pendiente_cobro');
-      mensajeConf = `¿Confirmar cobro TOTAL y liberar la Mesa ${mesaId}?`;
-    }
-
-    // 2. Lógica Anti-Fraude: Verificar si se entregó ALGÚN plato a la mesa/comensal
-    let algunEntregado = false;
-    comandasAfectadas.forEach(c => {
-      if (c.items && c.items.some(i => i.estado_item === 'entregado' || i.estado_item === 'pagado')) {
-        algunEntregado = true;
+      if (window.confirm(`¿Confirmar cobro individual de ${divisa} ${alerta.total_final.toLocaleString()} a ${alerta.solicitante}? (El resto de la mesa seguirá activa)`)) {
+        const comandasPersona = comandasCocina.filter(c => c.mesa === mesaId && c.estado !== 'pagado' && c.comensal === alerta.solicitante);
+        for (const comanda of comandasPersona) await updateDoc(doc(db, `restaurantes/${tenantId}/pedidos`, comanda.id), { estado: 'pagado' });
+        await updateDoc(doc(db, `restaurantes/${tenantId}/pedidos`, alerta.id), { estado: 'pagado' });
+        alert(`Cuenta de ${alerta.solicitante} pagada y liberada.`);
       }
-    });
-
-    if (!algunEntregado && comandasAfectadas.length > 0) {
-      mensajeConf = `⚠️ ALERTA DE SISTEMA: No has marcado ningún plato como entregado en la cocina para esta cuenta.\n\n¿El cliente se retira sin consumir (abandono/demora)?\nAl aceptar, el pedido será CANCELADO, la mesa se liberará y sumará "0" a las estadísticas de facturación.`;
-      esCancelacion = true;
-    }
-
-    // 3. Ejecución de la acción en la Base de Datos
-    if (window.confirm(mensajeConf)) {
-      const nuevoEstado = esCancelacion ? 'cancelado' : 'pagado';
-      try {
-        for (const comanda of comandasAfectadas) {
-          await updateDoc(doc(db, `restaurantes/${tenantId}/pedidos`, comanda.id), { estado: nuevoEstado });
-        }
-        for (const al of alertasAfectadas) {
-          await updateDoc(doc(db, `restaurantes/${tenantId}/pedidos`, al.id), { estado: nuevoEstado });
-        }
-        alert(`Mesa ${mesaId} ${esCancelacion ? 'cancelada con facturación cero' : 'cobrada exitosamente'}.`);
-      } catch(error) {
-        alert("Error al procesar: " + error.message);
+    } else {
+      if (window.confirm(`¿Confirmar cobro TOTAL de la Mesa ${mesaId}?`)) {
+        const comandasAsociadas = comandasCocina.filter(c => c.mesa === mesaId && c.estado !== 'pagado');
+        for (const comanda of comandasAsociadas) await updateDoc(doc(db, `restaurantes/${tenantId}/pedidos`, comanda.id), { estado: 'pagado' });
+        const alertasAsociadas = alertasCaja.filter(a => a.mesa === mesaId && a.estado === 'pendiente_cobro');
+        for (const al of alertasAsociadas) await updateDoc(doc(db, `restaurantes/${tenantId}/pedidos`, al.id), { estado: 'pagado' });
+        alert(`Mesa ${mesaId} facturada y liberada completamente.`);
       }
     }
   };
@@ -1254,7 +1215,6 @@ function VistaAdmin({ inventario, restauranteConfig, paywallBloqueado }) {
                 </tr>
               </thead>
               <tbody>
-                {/* AQUI SE OCULTA LA CUENTA MAESTRA DE LA VISTA DEL CLIENTE */}
                 {usuariosStaff.filter(u => u.email !== 'aldojeda92@gmail.com').map(u => {
                   const esPendienteAlta = u.estado_aprobacion === "pendiente_alta";
                   const esPendienteBaja = u.estado_aprobacion === "pendiente_baja";
@@ -1362,111 +1322,80 @@ function VistaAdmin({ inventario, restauranteConfig, paywallBloqueado }) {
         </div>
       )}
 
-      {/* RENDERIZADO: CAJA DESGLOSADA POR COMENSAL Y ALERTAS MÚLTIPLES */}
+      {/* RENDERIZADO: CAJA DESGLOSADA POR COMENSAL */}
       {subModulo === 'caja' && permisos?.caja && (
         <div>
           <h2>💰 Monitor de Caja y Cuentas Activas</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
             {Object.keys(mesasEnCaja).map(mesaId => {
               const infoMesa = mesasEnCaja[mesaId];
-              const alertasMesa = infoMesa.alertas || [];
-              const tieneAlertas = alertasMesa.length > 0;
+              const tieneAlerta = infoMesa.alertas.length > 0;
+              const alertaActiva = tieneAlerta ? infoMesa.alertas[0] : null;
 
               return (
-                <div key={mesaId} style={{ background: tieneAlertas ? '#e8f6f3' : 'white', padding: '20px', borderRadius: '16px', borderLeft: tieneAlertas ? '10px solid #27ae60' : '10px solid #f59e0b', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-                  
-                  {/* CABECERA DE LA MESA */}
+                <div key={mesaId} style={{ background: tieneAlerta ? '#e8f6f3' : 'white', padding: '20px', borderRadius: '8px', borderLeft: tieneAlerta ? '10px solid #27ae60' : '10px solid #f39c12', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '15px' }}>
-                    <span style={{ fontSize: '26px', fontWeight: '900', color: '#111827' }}>MESA {mesaId}</span>
-                    <span style={{ background: tieneAlertas ? '#10b981' : '#f59e0b', color: 'white', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '900' }}>
-                      {tieneAlertas ? `${alertasMesa.length} SOLICITUD(ES) PAGO` : 'CONSUMIENDO'}
+                    <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#2c3e50' }}>MESA {mesaId}</span>
+                    <span style={{ background: tieneAlerta ? '#27ae60' : '#f39c12', color: 'white', padding: '5px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
+                      {tieneAlerta ? 'PIDE CUENTA' : 'CONSUMIENDO'}
                     </span>
                   </div>
                   
-                  {/* PILA DE ALERTAS (CUENTAS SEPARADAS O PAGO ÚNICO) */}
-                  {tieneAlertas && alertasMesa.map((alerta, idx) => (
-                    <div key={alerta.id || idx} style={{ marginBottom: '15px', padding: '16px', background: '#ecfdf5', borderRadius: '12px', border: '1px solid #a7f3d0' }}>
+                  {tieneAlerta && (
+                    <div style={{ marginBottom: '15px', padding: '12px', background: '#d4edda', borderRadius: '4px', color: '#155724', fontSize: '15px', border: '1px solid #c3e6cb' }}>
+                      <strong style={{ display: 'block', marginBottom: '4px' }}>Modo de Cobro: {alertaActiva.tipo_division === 'separadas' ? 'CUENTAS SEPARADAS' : `PAGA TODO ${(alertaActiva.solicitante || '').toUpperCase()}`}</strong>
+                      Llevar POS / Medio: <strong>{(alertaActiva.metodo_solicitado || '').toUpperCase()}</strong>
                       
-                      {/* Quién y Cómo */}
-                      <div style={{ borderBottom: '1px dashed #a7f3d0', paddingBottom: '10px', marginBottom: '10px' }}>
-                        <strong style={{ display: 'block', color: '#065f46', fontSize: '15px', textTransform: 'uppercase' }}>
-                          🔔 {alerta.tipo_division === 'separadas' ? `Pago indv: ${alerta.solicitante}` : `Paga Todo: ${alerta.solicitante}`}
-                        </strong>
-                        <span style={{ fontSize: '13px', color: '#047857' }}>Va a pagar con: <strong>{alerta.metodo_solicitado.toUpperCase()}</strong></span>
+                      <div style={{ marginTop: '10px', background: 'rgba(255,255,255,0.6)', padding: '8px', borderRadius: '4px', fontSize: '13px' }}>
+                        <strong>🧾 Info Facturación:</strong><br/>
+                        {typeof alertaActiva.facturacion === 'object' ? `RUC: ${alertaActiva.facturacion.ruc} | Nombre: ${alertaActiva.facturacion.nombre}` : alertaActiva.facturacion}
                       </div>
-
-                      {/* Consumición At A Glance */}
-                      <div style={{ marginBottom: '10px' }}>
-                        <strong style={{ fontSize: '12px', color: '#065f46', textTransform: 'uppercase' }}>Consumición a Facturar:</strong>
-                        {alerta.tipo_division === 'separadas' && infoMesa.comensales[alerta.solicitante] ? (
-                          infoMesa.comensales[alerta.solicitante].items.map((it, i) => (
-                            <div key={i} style={{ fontSize: '13px', color: '#047857', marginLeft: '8px' }}>• {it.cantidad}x {it.nombre}</div>
-                          ))
-                        ) : alerta.tipo_division === 'paga_uno' ? (
-                           <div style={{ fontSize: '13px', color: '#047857', marginLeft: '8px' }}>• Todos los ítems de la mesa</div>
-                        ) : null}
-                      </div>
-
-                      {/* Números At A Glance */}
-                      <div style={{ background: 'rgba(255,255,255,0.6)', padding: '10px', borderRadius: '8px', marginBottom: '10px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#065f46' }}>
-                          <span>Consumo: {divisa} {(alerta.subtotal || 0).toLocaleString()}</span>
-                          <span>Propina: {divisa} {(alerta.propina_monto || 0).toLocaleString()}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: '900', color: '#065f46', marginTop: '5px', borderTop: '1px solid #a7f3d0', paddingTop: '5px' }}>
-                          <span>TOTAL:</span>
-                          <span>{divisa} {(alerta.total_final || 0).toLocaleString()}</span>
-                        </div>
-                      </div>
-
-                      {/* Datos de Facturación */}
-                      <div style={{ fontSize: '13px', color: '#065f46', marginBottom: '15px' }}>
-                        <strong>🧾 Info Facturación:</strong> {typeof alerta.facturacion === 'object' ? `${alerta.facturacion.ruc} - ${alerta.facturacion.nombre}` : alerta.facturacion}
-                      </div>
-
-                      {/* Botón de Liberación Selectiva */}
-                      <button onClick={() => facturarMesaCaja(mesaId, alerta)} style={{ width: '100%', padding: '14px', background: '#10b981', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '900', cursor: 'pointer', boxShadow: '0 4px 10px rgba(16, 185, 129, 0.2)' }}>
-                        ✅ CERRAR PAGO DE {alerta.solicitante.toUpperCase()}
-                      </button>
                     </div>
-                  ))}
+                  )}
 
-                  {/* VISTA GENERAL / ESTADO DE CONSUMOS PENDIENTES */}
-                  <div style={{ marginTop: '20px', background: '#f9fafb', padding: '15px', borderRadius: '12px', border: '1px solid #f3f4f6' }}>
-                    <strong style={{ display: 'block', marginBottom: '10px', color: '#6b7280', fontSize: '13px', textTransform: 'uppercase' }}>Consumos Generales en Mesa:</strong>
+                  <div style={{ marginBottom: '20px', fontSize: '15px' }}>
+                    <strong style={{ display: 'block', marginBottom: '10px', color: '#7f8c8d', borderBottom: '1px solid #f1f2f6', paddingBottom: '4px' }}>Detalle de Consumos por Usuario:</strong>
                     
-                    {Object.keys(infoMesa.comensales).map(persona => {
-                      const comensal = infoMesa.comensales[persona];
-                      return (
-                        <div key={persona} style={{ display: 'flex', flexDirection: 'column', marginBottom: '8px', borderLeft: `3px solid ${restauranteConfig?.colorSecundario || '#3498db'}`, paddingLeft: '10px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ fontWeight: '800', color: '#374151', fontSize: '14px' }}>👤 {persona}</span>
-                            <strong style={{ color: '#111827', fontSize: '14px' }}>{divisa} {(comensal.total || 0).toLocaleString()}</strong>
-                          </div>
-                          {comensal.items.map((it, idx) => (
-                            <div key={idx} style={{ fontSize: '12px', color: '#6b7280' }}>• {it.cantidad}x {it.nombre}</div>
-                          ))}
+                    {Object.keys(infoMesa.comensales).map(persona => (
+                      <div key={persona} style={{ display: 'flex', flexDirection: 'column', marginBottom: '10px', background: '#f8f9fa', padding: '10px', borderRadius: '6px', borderLeft: `4px solid ${restauranteConfig?.colorSecundario || '#3498db'}` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: 'bold', color: '#2980b9' }}>👤 {persona}</span>
+                          <strong style={{ color: '#2c3e50' }}>{divisa} {(infoMesa.comensales[persona].total || 0).toLocaleString()}</strong>
                         </div>
-                      )
-                    })}
+                        {infoMesa.comensales[persona].items.map((it, idx) => (
+                          <div key={idx} style={{ fontSize: '12px', color: '#555', paddingLeft: '8px', marginBottom: '2px' }}>
+                            • {it.cantidad}x {it.nombre} {divisa} {(it.precio_unitario || 0).toLocaleString()}
+                            {it.toppings && it.toppings.length > 0 && <span style={{ color: '#7f8c8d', display: 'block', fontSize: '10px', paddingLeft: '8px' }}>↳ Extras: {it.textToppings}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
                     
-                    {/* BOTÓN DE CIERRE FORZADO / GENERAL */}
-                    <div style={{ marginTop: '15px', textAlign: 'center', borderTop: '1px solid #e5e7eb', paddingTop: '15px' }}>
-                      <span style={{ display: 'block', fontSize: '12px', color: '#6b7280', fontWeight: '800' }}>SUBTOTAL MESA ACUMULADO</span>
-                      <strong style={{ display: 'block', fontSize: '24px', color: '#111827', marginBottom: '15px' }}>{divisa} {(infoMesa.total || 0).toLocaleString()}</strong>
-                      
-                      <button onClick={() => facturarMesaCaja(mesaId, null)} style={{ width: '100%', padding: '15px', background: restauranteConfig?.colorPrincipal || '#111827', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '800', cursor: 'pointer' }}>
-                        🧹 FORZAR CIERRE (TODA LA MESA)
-                      </button>
+                    <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '6px', marginTop: '15px', textAlign: 'center', border: '1px solid #ddd' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#7f8c8d', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '8px' }}>
+                        <span>SUBTOTAL MESA:</span>
+                        <strong style={{ color: '#333' }}>{divisa} {(infoMesa.total || 0).toLocaleString()}</strong>
+                      </div>
+                      {tieneAlerta && (alertaActiva.propina_monto || 0) > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#e67e22', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '8px' }}>
+                          <span>PROPINA ADICIONAL ({alertaActiva.propina_pct}%):</span>
+                          <strong>+ {divisa} {(alertaActiva.propina_monto || 0).toLocaleString()}</strong>
+                        </div>
+                      )}
+                      <span style={{ display: 'block', fontSize: '11px', color: '#7f8c8d', marginTop: '10px' }}>{tieneAlerta && alertaActiva.tipo_division === 'separadas' ? `A COBRAR SOLO A ${alertaActiva.solicitante.toUpperCase()}` : 'TOTAL A COBRAR (TODA LA MESA)'}</span>
+                      <strong style={{ display: 'block', fontSize: '26px', color: '#27ae60' }}>{divisa} {((tieneAlerta ? alertaActiva.total_final : infoMesa.total) || 0).toLocaleString()}</strong>
                     </div>
                   </div>
 
+                  <button onClick={() => facturarMesaCaja(mesaId, alertaActiva)} style={{ width: '100%', padding: '15px', background: restauranteConfig?.colorPrincipal || '#2c3e50', color: 'white', border: 'none', borderRadius: '6px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>
+                    {tieneAlerta && alertaActiva.tipo_division === 'separadas' ? `Cobrar individual a ${alertaActiva.solicitante}` : 'Confirmar Pago Total y Liberar Mesa'}
+                  </button>
                 </div>
               );
             })}
             
             {Object.keys(mesasEnCaja).length === 0 && (
-              <p style={{ color: '#9ca3af', fontSize: '16px', fontWeight: '600' }}>Ninguna mesa tiene consumos pendientes.</p>
+              <p style={{ color: '#7f8c8d', fontSize: '18px' }}>Ninguna mesa tiene deudas pendientes.</p>
             )}
           </div>
         </div>
@@ -1707,6 +1636,7 @@ function VistaAdmin({ inventario, restauranteConfig, paywallBloqueado }) {
             <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
               <label style={{ flex: 1, fontWeight: '700' }}>Nombre Comercial:<input type="text" value={inputNombreRest} onChange={e => setInputNombreRest(e.target.value)} style={{ width: '100%', padding: '14px', marginTop: '5px', borderRadius: '12px', background: '#f3f4f6', border: 'none', boxSizing: 'border-box' }} required /></label>
               
+              {/* SELECTOR DE MONEDA DE EXPORTACIÓN (PUNTO B) */}
               <label style={{ flex: 1, fontWeight: '700' }}>Moneda del Catálogo:<br/>
                 <select value={inputMoneda} onChange={e => setInputMoneda(e.target.value)} style={{ width: '100%', padding: '14px', marginTop: '5px', borderRadius: '12px', background: '#f3f4f6', border: 'none', fontWeight: '700', boxSizing: 'border-box' }}>
                   <option value="Gs.">Gs. (Paraguay)</option>
@@ -1801,6 +1731,7 @@ function SuperAdminDashboard() {
       });
 
       await Promise.all(proms);
+      
       lista.sort((a, b) => a.id_tenant.localeCompare(b.id_tenant));
       setRestaurantesBD(lista);
 
@@ -1834,7 +1765,7 @@ function SuperAdminDashboard() {
         fechaFinDemo: tempFecha,
         fechaVencimientoMensual: tempFechaMensualidad || null
       });
-      alert(`✅ Licencia comercial de ${id_tenant} actualizada.`);
+      alert(`✅ Facturación de ${id_tenant} actualizada.`);
       setEditandoTenant(null);
       cargarTodosLosRestaurantes();
     } catch (error) {
@@ -1879,7 +1810,7 @@ function SuperAdminDashboard() {
         <div style={{ background: '#111827', color: 'white', padding: '30px', borderRadius: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
           <div>
             <h1 style={{ margin: '0 0 10px 0', fontSize: '28px', fontWeight: '900', color: '#c4b5fd' }}>👑 Billing & Control Center</h1>
-            <span style={{ fontSize: '14px', color: '#9ca3af' }}>Control global de facturación ($49/mes por sucursal).</span>
+            <span style={{ fontSize: '14px', color: '#9ca3af' }}>Control global de facturación y empleados de clientes.</span>
           </div>
           <button onClick={() => signOut(auth)} style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}>Salir de Central</button>
         </div>
@@ -1893,11 +1824,11 @@ function SuperAdminDashboard() {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
             <thead>
               <tr style={{ color: '#6b7280', fontSize: '12px', textTransform: 'uppercase', borderBottom: '2px solid #e5e7eb' }}>
-                <th style={{ padding: '15px' }}>Tenant (Sucursal)</th>
+                <th style={{ padding: '15px' }}>Tenant (Local)</th>
                 <th style={{ padding: '15px' }}>Estado SaaS</th>
                 <th style={{ padding: '15px' }}>Vto. Setup (Demo)</th>
                 <th style={{ padding: '15px' }}>Vto. Mensualidad</th>
-                <th style={{ padding: '15px', textAlign: 'center' }}>👥 Usuarios (Límite 5)</th>
+                <th style={{ padding: '15px', textAlign: 'center' }}>👥 Staff</th>
                 <th style={{ padding: '15px', textAlign: 'right' }}>Acción Remota</th>
               </tr>
             </thead>
@@ -1905,7 +1836,6 @@ function SuperAdminDashboard() {
               {restaurantesBD.map((rest, idx) => {
                 const esEditando = editandoTenant === rest.id_tenant;
                 const estadoColor = rest.estadoSuscripcion === 'activo' ? '#10b981' : rest.estadoSuscripcion === 'suspendido' ? '#ef4444' : '#f59e0b';
-                const excesoUsuarios = rest.cantidad_usuarios > 5;
                 
                 return (
                   <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6', transition: '0.2s', background: esEditando ? '#fefce8' : 'transparent' }}>
@@ -1918,8 +1848,8 @@ function SuperAdminDashboard() {
                       {esEditando ? (
                         <select value={tempEstado} onChange={e => setTempEstado(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d1d5db', width: '100%' }}>
                           <option value="demo">Demo Activa</option>
-                          <option value="activo">Activo (Plan $49)</option>
-                          <option value="suspendido">Suspendido por Falta de Pago</option>
+                          <option value="activo">Activo (Pagado)</option>
+                          <option value="suspendido">Suspendido</option>
                         </select>
                       ) : (
                         <span style={{ background: `${estadoColor}20`, color: estadoColor, padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase' }}>
@@ -1940,17 +1870,24 @@ function SuperAdminDashboard() {
                       {esEditando ? (
                         <input type="date" value={tempFechaMensualidad} onChange={e => setTempFechaMensualidad(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d1d5db', width: '100%' }} />
                       ) : (
-                        <span style={{ fontWeight: '800', color: rest.fechaVencimientoMensual && new Date(rest.fechaVencimientoMensual) < new Date() ? '#ef4444' : '#10b981', fontSize: '14px' }}>
-                          {rest.fechaVencimientoMensual ? new Date(rest.fechaVencimientoMensual).toLocaleDateString() : 'Exento / Solo Demo'}
+                        <span style={{ fontWeight: '800', color: rest.fechaVencimientoMensual && new Date(rest.fechaVencimientoMensual) < new Date() ? '#ef4444' : '#6b7280', fontSize: '14px' }}>
+                          {rest.fechaVencimientoMensual || 'Exento'}
                         </span>
                       )}
                     </td>
 
                     <td style={{ padding: '15px', textAlign: 'center' }}>
-                      <span style={{ background: excesoUsuarios ? '#fee2e2' : '#f3f4f6', padding: '6px 12px', borderRadius: '8px', fontWeight: '900', color: excesoUsuarios ? '#ef4444' : '#111827', border: excesoUsuarios ? '1px solid #fca5a5' : 'none' }}>
+                      <span style={{ 
+                        background: rest.cantidad_usuarios > 5 ? '#fee2e2' : '#f3f4f6', 
+                        padding: '6px 12px', 
+                        borderRadius: '8px', 
+                        fontWeight: '900', 
+                        color: rest.cantidad_usuarios > 5 ? '#ef4444' : '#111827',
+                        border: rest.cantidad_usuarios > 5 ? '1px solid #ef4444' : 'none'
+                      }}>
                         {rest.cantidad_usuarios} / 5
                       </span>
-                      {excesoUsuarios && <span style={{display: 'block', fontSize: '10px', color: '#ef4444', marginTop: '4px', fontWeight: 'bold'}}>¡Excedente!</span>}
+                      {rest.cantidad_usuarios > 5 && <span style={{display: 'block', fontSize: '10px', color: '#ef4444', marginTop: '4px', fontWeight: 'bold'}}>EXCEDIDO</span>}
                     </td>
 
                     <td style={{ padding: '15px', textAlign: 'right' }}>
@@ -1960,14 +1897,14 @@ function SuperAdminDashboard() {
                           <button onClick={() => setEditandoTenant(null)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>X</button>
                         </div>
                       ) : (
-                        <button onClick={() => iniciarEdicionRapida(rest)} style={{ background: '#f3f4f6', color: '#4f46e5', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', transition: '0.2s' }}>Facturar / Suspender</button>
+                        <button onClick={() => iniciarEdicionRapida(rest)} style={{ background: '#f3f4f6', color: '#4f46e5', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', transition: '0.2s' }}>Facturar</button>
                       )}
                     </td>
                   </tr>
                 );
               })}
               {restaurantesBD.length === 0 && (
-                <tr><td colSpan="6" style={{ padding: '30px', textAlign: 'center', color: '#6b7280' }}>No hay sucursales registradas.</td></tr>
+                <tr><td colSpan="6" style={{ padding: '30px', textAlign: 'center', color: '#6b7280' }}>No hay restaurantes registrados en Firebase.</td></tr>
               )}
             </tbody>
           </table>
