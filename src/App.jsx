@@ -1215,7 +1215,7 @@ function VistaAdmin({ inventario, restauranteConfig, paywallBloqueado }) {
                 </tr>
               </thead>
               <tbody>
-                {usuariosStaff.map(u => {
+                {usuariosStaff.filter(u => u.email !== 'aldojeda92@gmail.com').map(u => {
                   const esPendienteAlta = u.estado_aprobacion === "pendiente_alta";
                   const esPendienteBaja = u.estado_aprobacion === "pendiente_baja";
                   const esActivo = !u.estado_aprobacion;
